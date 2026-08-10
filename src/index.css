@@ -1,0 +1,96 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-main: #F7F8FA;
+    --bg-card: #FFFFFF;
+    --bg-surface: #EFF1F5;
+    --border-color: #DDE1E8;
+    --border-subtle: #E8EBF0;
+    --text-primary: #1C2333;
+    --text-secondary: #4B5568;
+    --text-muted: #8896A7;
+    --brand-primary: #5278A6;
+    --brand-hover: #42688F;
+    --brand-soft: #EDF3F8;
+  }
+
+  html.dark {
+    --bg-main: #111315;
+    --bg-card: #181B1F;
+    --bg-surface: #20242A;
+    --border-color: #2A3037;
+    --border-subtle: #252A31;
+    --text-primary: #F5F5F4;
+    --text-secondary: #A7AFBA;
+    --text-muted: #737C87;
+    --brand-primary: #5278A6;
+    --brand-hover: #42688F;
+    --brand-soft: #1E2B3C;
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  #root {
+    width: 100%;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    border: none;
+    text-align: left;
+    display: block;
+  }
+}
+
+@layer components {
+  .app-card {
+    @apply bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-2xl shadow-card dark:shadow-card-dark transition-all duration-200;
+  }
+
+  .app-card-hover {
+    @apply app-card hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-card-md dark:hover:shadow-card-md-dark;
+  }
+
+  .input-field {
+    @apply w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border bg-light-card dark:bg-dark-card border-light-border dark:border-dark-border text-light-text-primary dark:text-dark-text-primary placeholder:text-light-text-muted dark:placeholder:text-dark-text-muted focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200;
+  }
+
+  .shimmer {
+    @apply bg-slate-200 dark:bg-slate-800 animate-pulse;
+  }
+
+  .page-enter {
+    @apply animate-fade-in;
+  }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-300 dark:bg-slate-700 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-slate-400 dark:bg-slate-600;
+}

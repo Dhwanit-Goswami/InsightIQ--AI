@@ -1,0 +1,102 @@
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  FiBell, FiCheckCircle, FiAlertTriangle, FiInfo,
+  FiX, FiCheck
+} from 'react-icons/fi';
+
+const notifications = [
+  { id: 1, type: 'success', title: 'Revenue target exceeded', message: 'Q3 revenue surpassed target by 12.4%', time: '5 min ago', read: false },
+  { id: 2, type: 'warning', title: 'Inventory alert', message: 'SKU-8821 stock low in Surat warehouse (8 units left)', time: '18 min ago', read: false },
+  { id: 3, type: 'info', title: 'AI Insight ready', message: 'New cost optimization identified — ₹34L potential', time: '1 hr ago', read: false },
+  { id: 4, type: 'success', title: 'Payment received', message: 'NovaMart Retail paid ₹12.8L invoice', time: '2 hr ago', read: true },
+  { id: 5, type: 'info', title: 'Report generated', message: 'Monthly GST & P&L report is ready to download', time: '3 hr ago', read: true },
+];
+
+const typeIcon = {
+  success: <FiCheckCircle className="w-4 h-4 text-success" />,
+  warning: <FiAlertTriangle className="w-4 h-4 text-warning" />,
+  info: <FiInfo className="w-4 h-4 text-primary" />,
+};
+
+const NotificationMenu = () => {
+  const [open, setOpen] = useState(false);
+  const [items, setItems] = useState(notifications);
+  const ref = useRef(null);
+  const unread = items.filter(n => !n.read).length;
+
+  useEffect(() => {
+    const handler = (e) => { if (!ref.current?.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const markAllRead = () => setItems(items.map(n => ({ ...n, read: true })));
+  const dismiss = (id) => setItems(items.filter(n => n.id !== id));
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        id="notification-btn"
+        onClick={() => setOpen(p => !p)}
+        className="relative p-2 rounded-xl text-light-text-secondary dark:text-dark-text-secondary hover:bg-light-surface dark:hover:bg-dark-surface hover:text-light-text-primary dark:hover:text-dark-text-primary transition-all"
+        aria-label="Notifications"
+      >
+        <FiBell className="w-4.5 h-4.5" />
+        {unread > 0 && (
+          <span className="absolute top-1 right-1 w-4 h-4 bg-primary rounded-full text-[10px] font-bold text-white flex items-center justify-center">
+            {unread}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-12 w-80 bg-light-card dark:bg-dark-card rounded-2xl shadow-card-lg dark:shadow-card-lg-dark border border-light-border dark:border-dark-border z-50 animate-fade-up">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-light-border dark:border-dark-border">
+            <div>
+              <h3 className="text-sm font-semibold text-light-text-primary dark:text-dark-text-primary">Notifications</h3>
+              <p className="text-xs text-light-text-muted dark:text-dark-text-muted">{unread} unread</p>
+            </div>
+            {unread > 0 && (
+              <button
+                onClick={markAllRead}
+                className="flex items-center gap-1 text-xs text-primary hover:underline transition-colors font-medium"
+              >
+                <FiCheck className="w-3 h-3" /> Mark all read
+              </button>
+            )}
+          </div>
+
+          <div className="max-h-80 overflow-y-auto divide-y divide-light-border dark:divide-dark-border">
+            {items.map(n => (
+              <div
+                key={n.id}
+                className={`flex items-start gap-3 px-4 py-3 hover:bg-light-surface dark:hover:bg-dark-surface transition-colors ${!n.read ? 'bg-primary/5 dark:bg-primary/10' : ''}`}
+              >
+                <div className="mt-0.5 flex-shrink-0">{typeIcon[n.type]}</div>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-xs font-semibold ${n.read ? 'text-light-text-secondary dark:text-dark-text-secondary' : 'text-light-text-primary dark:text-dark-text-primary'}`}>{n.title}</p>
+                  <p className="text-xs text-light-text-muted dark:text-dark-text-muted truncate">{n.message}</p>
+                  <p className="text-[10px] text-light-text-muted dark:text-dark-text-muted mt-0.5">{n.time}</p>
+                </div>
+                <button
+                  onClick={() => dismiss(n.id)}
+                  className="flex-shrink-0 text-light-text-muted dark:text-dark-text-muted hover:text-light-text-primary dark:hover:text-dark-text-primary transition-colors mt-0.5"
+                >
+                  <FiX className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div className="px-4 py-2.5 border-t border-light-border dark:border-dark-border">
+            <button className="w-full text-xs text-center font-medium text-primary hover:underline transition-colors">
+              View all notifications
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default NotificationMenu;

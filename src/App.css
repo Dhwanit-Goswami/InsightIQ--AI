@@ -1,0 +1,8 @@
+/* App-specific utility overrides */
+.counter {
+  font-size: 14px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  color: var(--brand-primary);
+  background: rgba(49, 94, 155, 0.1);
+}

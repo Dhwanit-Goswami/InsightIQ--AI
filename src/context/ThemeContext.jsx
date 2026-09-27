@@ -4,7 +4,7 @@ const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
   const [isDark, setIsDark] = useState(() => {
-    const saved = localStorage.getItem('nexusai-theme');
+    const saved = localStorage.getItem('insightiq-theme') || localStorage.getItem('nexusai-theme');
     return saved ? saved === 'dark' : true;
   });
 
@@ -17,7 +17,7 @@ export const ThemeProvider = ({ children }) => {
       root.classList.add('light');
       root.classList.remove('dark');
     }
-    localStorage.setItem('nexusai-theme', isDark ? 'dark' : 'light');
+    localStorage.setItem('insightiq-theme', isDark ? 'dark' : 'light');
   }, [isDark]);
 
   const toggleTheme = () => setIsDark(prev => !prev);
@@ -29,6 +29,8 @@ export const ThemeProvider = ({ children }) => {
   );
 };
 
+// oxlint-disable-next-line react/only-export-components
+// eslint-disable-next-line react-refresh/only-export-components
 export const useTheme = () => {
   const context = useContext(ThemeContext);
   if (!context) throw new Error('useTheme must be used within ThemeProvider');

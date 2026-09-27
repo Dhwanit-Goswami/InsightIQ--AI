@@ -14,10 +14,10 @@ const Card = ({
       className={`
         bg-light-card dark:bg-dark-card
         border border-light-border dark:border-dark-border
-        rounded-2xl shadow-card dark:shadow-card-dark
-        transition-all duration-200
-        ${padding ? 'p-5' : ''}
-        ${hover ? 'hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-card-md dark:hover:shadow-card-md-dark cursor-pointer' : ''}
+        rounded-xl shadow-card dark:shadow-card-dark
+        transition-colors duration-180
+        ${padding ? 'p-4 sm:p-5' : ''}
+        ${hover ? 'hover:border-slate-300 dark:hover:border-slate-600 cursor-pointer' : ''}
         ${onClick ? 'cursor-pointer' : ''}
         ${className}
       `}

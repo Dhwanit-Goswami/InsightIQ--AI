@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import { useTheme } from '../context/ThemeContext';
@@ -15,7 +15,7 @@ const Toggle = ({ checked, onChange }) => (
     }`}
   >
     <span
-      className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-xs transition-transform duration-200 ${
+      className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${
         checked ? 'translate-x-5' : 'translate-x-0.5'
       }`}
     />
@@ -80,7 +80,7 @@ const Settings = () => {
                 onClick={() => { if (!isDark) toggleTheme(); }}
                 className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border text-xs font-bold transition-all ${
                   isDark
-                    ? 'bg-primary text-white border-primary shadow-xs'
+                    ? 'bg-primary text-white border-primary shadow-sm'
                     : 'bg-light-surface dark:bg-dark-surface border-light-border dark:border-dark-border text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text-primary dark:hover:text-dark-text-primary'
                 }`}
               >
@@ -90,7 +90,7 @@ const Settings = () => {
                 onClick={() => { if (isDark) toggleTheme(); }}
                 className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border text-xs font-bold transition-all ${
                   !isDark
-                    ? 'bg-primary text-white border-primary shadow-xs'
+                    ? 'bg-primary text-white border-primary shadow-sm'
                     : 'bg-light-surface dark:bg-dark-surface border-light-border dark:border-dark-border text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text-primary dark:hover:text-dark-text-primary'
                 }`}
               >
@@ -106,7 +106,7 @@ const Settings = () => {
               Intelligence Broadcast Rules
             </h3>
             <p className="text-xs text-light-text-muted dark:text-dark-text-muted leading-relaxed -mt-2">
-              Decide when NexusAI broadcasts automated alerts and reports to external channels.
+              Decide when InsightIQ broadcasts automated alerts and reports to external channels.
             </p>
             <div className="divide-y divide-light-border dark:divide-dark-border">
               {[
@@ -140,7 +140,7 @@ const Settings = () => {
                 <option value="INR">INR (₹) Indian Rupee</option>
                 <option value="USD">USD ($) US Dollar</option>
                 <option value="EUR">EUR (€) Euro</option>
-                <option value="GBP">GBP (£) British Pound</option>
+                <option value="GBP">GBP (Â£) British Pound</option>
               </select>
             </div>
             <div className="space-y-1.5">
@@ -162,8 +162,8 @@ const Settings = () => {
           </div>
           <div className="pt-3 border-t border-light-border dark:border-dark-border">
             <p className="text-[10px] font-bold text-light-text-muted dark:text-dark-text-muted uppercase mb-2">Platform Version</p>
-            <p className="text-xs text-light-text-primary dark:text-dark-text-primary font-semibold">NexusAI Enterprise v3.2.1</p>
-            <p className="text-[10px] text-light-text-muted dark:text-dark-text-muted mt-0.5">Last system update: Oct 2025</p>
+            <p className="text-xs text-light-text-primary dark:text-dark-text-primary font-semibold">InsightIQ Enterprise v1.0.0</p>
+            <p className="text-[10px] text-light-text-muted dark:text-dark-text-muted mt-0.5">Last system update: September 2026</p>
           </div>
         </Card>
       </div>

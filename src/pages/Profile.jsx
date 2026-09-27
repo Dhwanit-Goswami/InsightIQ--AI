@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { getUserProfile } from '../services/api';
 import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
@@ -67,7 +67,7 @@ const Profile = () => {
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-light-text-primary dark:text-dark-text-primary leading-tight">{profile?.fullName}</h2>
-                  <p className="text-xs text-light-text-muted dark:text-dark-text-muted mt-0.5 font-medium">{profile?.role}</p>
+                  <p className="page-subtitle font-medium">{profile?.role}</p>
                   <Badge variant="success" className="mt-1.5 text-[10px]">Active Account</Badge>
                 </div>
               </div>

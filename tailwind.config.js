@@ -5,10 +5,11 @@ export default {
   theme: {
     extend: {
       colors: {
-        // ── Primary Brand (Calm Professional Blue: #5278A6) ──────────
+        // ── Primary Brand (Muted Professional Blue: #5278A6) ──────────
         primary: {
           DEFAULT: '#5278A6',
           hover:   '#42688F',
+          soft:    '#EDF3F8',
           50:      '#EDF3F8',
           100:     '#D5E3F0',
           200:     '#B4CCE2',
@@ -41,49 +42,51 @@ export default {
           dark:    '#7A5E2E',
         },
 
-        // ── Danger (Muted Red: #B76868) ───────────────────────
+        // ── Danger / Error (Muted Red: #B76868) ───────────────
         danger: {
           DEFAULT: '#B76868',
           bg:      '#FBF2F2',
           dark:    '#7F4242',
         },
 
-        // ── AI Lavender (Muted AI Accent: #8178A2) ───────────
+        // ── AI Lavender (Muted AI Accent: #8178A2 - use sparingly) ──
         lavender: {
           DEFAULT: '#8178A2',
           bg:      '#F4F3F8',
           dark:    '#5C5478',
         },
 
-        // ── Light Mode Surfaces ───────────────────────────────
+        // ── Light Mode Surfaces (Exact Spec) ──────────────────
         light: {
-          bg:         '#F7F8FA',       // main background
+          bg:         '#F7F7F5',       // main background
           card:       '#FFFFFF',       // card surface
-          surface:    '#EFF1F5',       // secondary surface
-          border:     '#DDE1E8',       // default border
-          divider:    '#E8EBF0',       // subtle divider
-          'text-primary':   '#1C2333', // main text
-          'text-secondary': '#4B5568', // secondary text
-          'text-muted':     '#8896A7', // muted/metadata text
+          surface:    '#F1F2EF',       // secondary surface
+          border:     '#E2E4E1',       // default border
+          divider:    '#EAECE9',       // subtle divider
+          'text-primary':   '#20242A', // main text
+          'text-secondary': '#626A73', // secondary text
+          'text-muted':     '#8A9199', // muted text
           sidebar:    '#FFFFFF',       // sidebar bg
           topbar:     '#FFFFFF',       // topbar bg
         },
 
-        // ── Dark Mode Surfaces ────────────────────────────────
+        // ── Dark Mode Surfaces (Exact Spec) ───────────────────
         dark: {
           bg:         '#111315',       // main background
           card:       '#181B1F',       // card surface
-          surface:    '#20242A',       // secondary surface
-          border:     '#2A3037',       // default border
-          divider:    '#252A31',       // subtle divider
-          'text-primary':   '#F5F5F4', // main text
-          'text-secondary': '#A7AFBA', // secondary text
-          'text-muted':     '#737C87', // muted/metadata text
-          sidebar:    '#14171B',       // sidebar bg
-          topbar:     '#14171B',       // topbar bg
+          surface:    '#1E2227',       // elevated surface
+          border:     '#2A2F35',       // default border
+          divider:    '#24292E',       // subtle divider
+          'text-primary':   '#F4F4F1', // main text
+          'text-secondary': '#AEB4BB', // secondary text
+          'text-muted':     '#747C85', // muted text
+          sidebar:    '#14171A',       // sidebar bg
+          topbar:     '#14171A',       // topbar bg
+          primary:    '#5B7FAF',       // dark mode primary
+          ai:         '#8178B2',       // dark mode AI
         },
 
-        // ── Chart Palette (Muted Professional) ────────────────
+        // ── Professional Chart Palette ────────────────────────
         chart: {
           blue:     '#5278A6',
           green:    '#5A8065',
@@ -96,37 +99,44 @@ export default {
       },
 
       fontFamily: {
-        sans:    ['Inter', 'system-ui', 'sans-serif'],
-        display: ['Inter', 'system-ui', 'sans-serif'],
+        sans:    ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        display: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
       },
 
       fontSize: {
-        '2xs': ['0.65rem', { lineHeight: '1rem' }],
+        '2xs': ['0.6875rem', { lineHeight: '1rem' }],    // 11px
+        'xs':  ['0.75rem',   { lineHeight: '1.125rem' }], // 12px
+        'sm':  ['0.875rem',  { lineHeight: '1.25rem' }],  // 14px
+        'base':['0.9375rem', { lineHeight: '1.4rem' }],   // 15px
+        'lg':  ['1.125rem',  { lineHeight: '1.5rem' }],   // 18px
+        'xl':  ['1.25rem',   { lineHeight: '1.75rem' }],  // 20px
+        '2xl': ['1.5rem',    { lineHeight: '2rem' }],     // 24px
+        '3xl': ['1.875rem',  { lineHeight: '2.25rem' }],  // 30px
       },
 
       borderRadius: {
-        '2xl': '1rem',
-        '3xl': '1.25rem',
+        'sm': '6px',
+        'md': '8px',
+        'lg': '8px',
+        'xl': '11px',
+        '2xl': '14px',
       },
 
       boxShadow: {
-        // Subtle, clean elevation — NO glow
-        'card':    '0 1px 3px 0 rgba(0,0,0,0.06), 0 1px 2px -1px rgba(0,0,0,0.04)',
-        'card-md': '0 4px 6px -1px rgba(0,0,0,0.06), 0 2px 4px -2px rgba(0,0,0,0.04)',
-        'card-lg': '0 10px 15px -3px rgba(0,0,0,0.07), 0 4px 6px -4px rgba(0,0,0,0.04)',
-        'topbar':  '0 1px 0 0 rgba(0,0,0,0.06)',
-        'input':   '0 0 0 3px rgba(82,120,166,0.12)',
-        // Dark mode elevations
-        'card-dark':    '0 1px 3px 0 rgba(0,0,0,0.3), 0 1px 2px -1px rgba(0,0,0,0.2)',
-        'card-md-dark': '0 4px 6px -1px rgba(0,0,0,0.35), 0 2px 4px -2px rgba(0,0,0,0.25)',
-        'card-lg-dark': '0 10px 15px -3px rgba(0,0,0,0.4), 0 4px 6px -4px rgba(0,0,0,0.3)',
+        // Restrained, subtle elevation — strictly NO glow or neon
+        'card':    '0 1px 2px 0 rgba(0, 0, 0, 0.04)',
+        'card-md': '0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.04)',
+        'card-lg': '0 6px 12px -2px rgba(0, 0, 0, 0.08), 0 3px 6px -3px rgba(0, 0, 0, 0.05)',
+        'topbar':  '0 1px 0 0 rgba(0, 0, 0, 0.05)',
+        'card-dark':    '0 1px 2px 0 rgba(0, 0, 0, 0.25)',
+        'card-md-dark': '0 3px 6px -1px rgba(0, 0, 0, 0.35)',
+        'card-lg-dark': '0 8px 16px -2px rgba(0, 0, 0, 0.45)',
       },
 
       animation: {
-        'fade-in':   'fadeIn 0.3s ease-out',
-        'fade-up':   'fadeUp 0.3s ease-out',
-        'slide-in':  'slideIn 0.25s ease-out',
-        'shimmer':   'shimmer 1.8s ease-in-out infinite',
+        'fade-in':   'fadeIn 0.2s ease-out',
+        'fade-up':   'fadeUp 0.22s ease-out',
+        'fade-down': 'fadeDown 0.22s ease-out',
       },
 
       keyframes: {
@@ -135,23 +145,19 @@ export default {
           '100%': { opacity: '1' },
         },
         fadeUp: {
-          '0%':   { opacity: '0', transform: 'translateY(8px)' },
+          '0%':   { opacity: '0', transform: 'translateY(6px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
-        slideIn: {
-          '0%':   { opacity: '0', transform: 'translateX(-8px)' },
-          '100%': { opacity: '1', transform: 'translateX(0)' },
-        },
-        shimmer: {
-          '0%':   { backgroundPosition: '-200% 0' },
-          '100%': { backgroundPosition: '200% 0' },
+        fadeDown: {
+          '0%':   { opacity: '0', transform: 'translateY(-6px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
         },
       },
 
       transitionDuration: {
         '180': '180ms',
         '220': '220ms',
-        '280': '280ms',
+        '250': '250ms',
       },
     },
   },

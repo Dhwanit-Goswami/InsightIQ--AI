@@ -6,7 +6,7 @@ const Input = forwardRef(({
   error,
   hint,
   icon: Icon,
-  iconRight,
+  iconRight: IconRight,
   type = 'text',
   placeholder,
   className = '',
@@ -25,7 +25,7 @@ const Input = forwardRef(({
       )}
       <div className="relative">
         {Icon && (
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-light-text-muted dark:text-dark-text-muted z-10">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-light-text-muted dark:text-dark-text-muted pointer-events-none z-10">
             <Icon className="w-4 h-4" />
           </div>
         )}
@@ -36,7 +36,7 @@ const Input = forwardRef(({
           className={`
             input-field
             ${Icon ? 'pl-10' : ''}
-            ${showPasswordToggle || iconRight ? 'pr-10' : ''}
+            ${showPasswordToggle || IconRight ? 'pr-10' : ''}
             ${error ? 'border-danger focus:border-danger focus:ring-danger/20' : ''}
             ${className}
           `}
@@ -46,14 +46,15 @@ const Input = forwardRef(({
           <button
             type="button"
             onClick={onTogglePassword}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-light-text-muted dark:text-dark-text-muted hover:text-light-text-primary dark:hover:text-dark-text-primary transition-colors z-10"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-light-text-muted dark:text-dark-text-muted hover:text-light-text-primary dark:hover:text-dark-text-primary transition-colors cursor-pointer z-10"
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
           >
             {showPassword ? <FiEyeOff className="w-4 h-4" /> : <FiEye className="w-4 h-4" />}
           </button>
         )}
-        {iconRight && !showPasswordToggle && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-light-text-muted dark:text-dark-text-muted">
-            <iconRight className="w-4 h-4" />
+        {IconRight && !showPasswordToggle && (
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-light-text-muted dark:text-dark-text-muted pointer-events-none">
+            <IconRight className="w-4 h-4" />
           </div>
         )}
       </div>

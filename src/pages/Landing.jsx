@@ -1,77 +1,12 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  FiZap, FiShield, FiBarChart2, FiCpu, FiTarget,
-  FiUsers, FiArrowRight, FiCheck, FiStar, FiEye, FiCheckCircle, FiTrendingUp,
-  FiLayers, FiMenu, FiX, FiSun, FiMoon
+  FiArrowRight, FiCheck, FiStar, FiShield,
+  FiTrendingUp, FiMenu, FiX, FiSun, FiMoon,
+  FiBarChart2, FiDatabase, FiLayers, FiAlertCircle
 } from 'react-icons/fi';
 import { useTheme } from '../context/ThemeContext';
-
-const stats = [
-  { value: '50K+', label: 'SMEs Powered' },
-  { value: '₹20,000Cr+', label: 'Revenue Analyzed' },
-  { value: '99.9%', label: 'Uptime SLA' },
-  { value: '94%', label: 'Prediction Accuracy' },
-];
-
-const features = [
-  { icon: FiBarChart2, title: 'Real-Time Analytics', description: 'Monitor your business performance with live dashboards, KPI tracking, and automated GST & financial metrics.' },
-  { icon: FiCpu, title: 'AI-Powered Insights', description: 'Get predictive analytics, supply chain risk alerts, and actionable recommendations powered by advanced models.' },
-  { icon: FiTarget, title: 'Revenue Intelligence', description: 'Forecast quarterly revenue, identify B2B expansion opportunities, and optimize product pricing.' },
-  { icon: FiShield, title: 'Risk Management', description: 'Detect inventory anomalies, assess credit risks, and protect operations across all regional hubs.' },
-  { icon: FiUsers, title: 'Client Account Intelligence', description: 'Understand your corporate customer base — churn prediction, account ARR lifetime value, and usage analytics.' },
-  { icon: FiLayers, title: 'Unified Data Platform', description: 'Consolidate ERP, CRM, and financial accounting data into one decision cockpit.' },
-];
-
-const aiCapabilities = [
-  'Revenue Forecasting & GST Alignment',
-  'Corporate Account Churn Prevention',
-  'Logistics & Cloud Cost Optimization',
-  'Indian SME Sector Benchmarks',
-  'Business Health & Liquidity Scoring',
-  'Supply Chain Anomaly Alerts',
-  'Natural Language Business Queries',
-  'Automated Executive Board Reports',
-];
-
-const testimonials = [
-  { name: 'Rajesh Verma', role: 'CEO, Vardaan Solutions Pvt. Ltd.', content: 'NexusAI transformed our executive decision-making. Revenue predictions for our West zone are 94% accurate and AI insights saved us ₹34L in operating costs.', rating: 5 },
-  { name: 'Ananya Iyer', role: 'CFO, Arvind Textiles Pvt. Ltd.', content: 'The best decision intelligence platform for Indian enterprise SMEs. The AI assistant feels like having a senior financial analyst on call 24/7.', rating: 5 },
-  { name: 'Sunil Mehta', role: 'Founder, NovaMart Retail Pvt. Ltd.', content: 'From day one, NexusAI gave us enterprise-grade analytics across all our retail branches. The dashboard is clean and insights are immediately actionable.', rating: 5 },
-];
-
-const aboutPillars = [
-  {
-    num: '01',
-    title: 'Clarity',
-    desc: 'Turn complex business data into information that is easy to understand.',
-    icon: FiEye
-  },
-  {
-    num: '02',
-    title: 'Intelligence',
-    desc: 'Use AI to identify patterns, risks and opportunities.',
-    icon: FiZap
-  },
-  {
-    num: '03',
-    title: 'Action',
-    desc: 'Turn insights into practical business decisions.',
-    icon: FiCheckCircle
-  },
-  {
-    num: '04',
-    title: 'Growth',
-    desc: 'Help businesses continuously improve performance.',
-    icon: FiTrendingUp
-  }
-];
-
-const pricingPlans = [
-  { name: 'Starter Tier', price: '₹3,999', period: '/month', description: 'For small business teams', features: ['5 Team Members', 'Basic Financial Analytics', 'Automated Email Reports', 'Standard Support', '1,000 AI Credits'], popular: false },
-  { name: 'Professional', price: '₹11,999', period: '/month', description: 'For growing enterprise SMEs', features: ['25 Team Members', 'Advanced Predictive Analytics', 'AI Insights Portal', 'Priority Helpdesk', '10,000 AI Credits', 'Custom Reports', 'GST & API Integration'], popular: true },
-  { name: 'Enterprise Tier', price: 'Custom', period: '', description: 'For large corporate groups', features: ['Unlimited Team Seats', 'Full AI Suite & Custom Models', 'Dedicated Account Director', 'Unlimited AI Credits', 'ERP & Tally Integrations', 'SSO & ISO Security', 'SLA Guarantee'], popular: false },
-];
+import { AreaChartWidget } from '../components/charts/Charts';
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -85,315 +20,680 @@ const Landing = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Demo chart data for Product Preview (Section 30)
+  const previewChartData = [
+    { month: 'Apr', revenue: 18.2, profit: 4.8 },
+    { month: 'May', revenue: 20.4, profit: 5.3 },
+    { month: 'Jun', revenue: 21.8, profit: 5.6 },
+    { month: 'Jul', revenue: 22.9, profit: 5.8 },
+    { month: 'Aug', revenue: 22.1, profit: 5.9 },
+    { month: 'Sep', revenue: 24.8, profit: 6.4 },
+  ];
+
   return (
     <div className="min-h-screen bg-light-bg dark:bg-dark-bg text-light-text-primary dark:text-dark-text-primary transition-colors duration-200 overflow-x-hidden">
-      {/* ─── Navbar ─── */}
-      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-200 ${scrolled ? 'bg-light-topbar/95 dark:bg-dark-topbar/95 backdrop-blur-xs border-b border-light-border dark:border-dark-border shadow-xs' : ''}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
+      {/* ─── Top Navigation ─── */}
+      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-200 ${
+        scrolled
+          ? 'bg-light-card/95 dark:bg-dark-card/95 backdrop-blur-sm border-b border-light-border dark:border-dark-border shadow-sm'
+          : 'bg-transparent'
+      }`}>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
           <Link to="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-primary text-white flex items-center justify-center shadow-xs">
-              <FiZap className="w-4.5 h-4.5" />
+            <div className="w-7 h-7 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-xs shadow-sm">
+              IQ
             </div>
-            <span className="text-xl font-bold tracking-tight text-light-text-primary dark:text-dark-text-primary">NexusAI</span>
+            <span className="text-base font-semibold tracking-tight text-light-text-primary dark:text-dark-text-primary">
+              InsightIQ
+            </span>
           </Link>
-          <div className="hidden md:flex items-center gap-8 text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary">
-            <a href="#features" className="hover:text-light-text-primary dark:hover:text-dark-text-primary transition-colors">Features</a>
-            <a href="#ai" className="hover:text-light-text-primary dark:hover:text-dark-text-primary transition-colors">AI Capabilities</a>
+
+          <div className="hidden md:flex items-center gap-6 text-xs font-medium text-light-text-secondary dark:text-dark-text-secondary">
+            <a href="#product-preview" className="hover:text-light-text-primary dark:hover:text-dark-text-primary transition-colors">Product</a>
+            <a href="#how-it-works" className="hover:text-light-text-primary dark:hover:text-dark-text-primary transition-colors">How It Works</a>
+            <a href="#capabilities" className="hover:text-light-text-primary dark:hover:text-dark-text-primary transition-colors">Capabilities</a>
+            <a href="#use-cases" className="hover:text-light-text-primary dark:hover:text-dark-text-primary transition-colors">Use Cases</a>
             <a href="#testimonials" className="hover:text-light-text-primary dark:hover:text-dark-text-primary transition-colors">Testimonials</a>
             <a href="#about" className="hover:text-light-text-primary dark:hover:text-dark-text-primary transition-colors">About Us</a>
-            <a href="#pricing" className="hover:text-light-text-primary dark:hover:text-dark-text-primary transition-colors">Pricing Tiers</a>
+            <a href="#pricing" className="hover:text-light-text-primary dark:hover:text-dark-text-primary transition-colors">Pricing</a>
           </div>
-          <div className="hidden md:flex items-center gap-3">
+
+          <div className="hidden md:flex items-center gap-2.5">
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-xl text-light-text-secondary dark:text-dark-text-secondary hover:bg-light-surface dark:hover:bg-dark-surface transition-all"
-              aria-label="Toggle Theme"
+              className="p-1.5 rounded-lg text-light-text-secondary dark:text-dark-text-secondary hover:bg-light-surface dark:hover:bg-dark-surface transition-colors cursor-pointer"
+              aria-label="Toggle theme"
             >
               {isDark ? <FiSun className="w-4 h-4" /> : <FiMoon className="w-4 h-4" />}
             </button>
-            <button onClick={() => navigate('/login')} className="px-4 py-2 text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text-primary dark:hover:text-dark-text-primary transition-colors">Sign In</button>
-            <button onClick={() => navigate('/signup')} className="px-4 py-2 text-xs font-semibold rounded-xl bg-primary hover:bg-primary-hover text-white shadow-xs transition-all">Get Started</button>
+            <button
+              onClick={() => navigate('/login')}
+              className="px-3 py-1.5 text-xs font-medium text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text-primary dark:hover:text-dark-text-primary transition-colors cursor-pointer"
+            >
+              Sign In
+            </button>
+            <button
+              onClick={() => navigate('/signup')}
+              className="px-3.5 py-1.5 text-xs font-medium rounded-lg bg-primary hover:bg-primary-hover text-white transition-colors cursor-pointer shadow-card"
+            >
+              Get Started
+            </button>
           </div>
-          <button className="md:hidden p-2 text-light-text-secondary dark:text-dark-text-secondary" onClick={() => setMobileMenu(!mobileMenu)}>
+
+          <button
+            className="md:hidden p-1.5 text-light-text-secondary dark:text-dark-text-secondary cursor-pointer"
+            onClick={() => setMobileMenu(!mobileMenu)}
+            aria-label="Menu"
+          >
             {mobileMenu ? <FiX className="w-5 h-5" /> : <FiMenu className="w-5 h-5" />}
           </button>
         </div>
-        {/* Mobile Menu */}
+
+        {/* Mobile menu dropdown */}
         {mobileMenu && (
-          <div className="md:hidden bg-light-card dark:bg-dark-card border-t border-light-border dark:border-dark-border p-4 space-y-3 animate-fade-in">
-            <a href="#features" className="block py-2 text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary">Features</a>
-            <a href="#ai" className="block py-2 text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary">AI Capabilities</a>
-            <a href="#testimonials" className="block py-2 text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary">Testimonials</a>
-            <a href="#about" className="block py-2 text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary">About Us</a>
-            <a href="#pricing" className="block py-2 text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary">Pricing Tiers</a>
-            <div className="flex gap-2 pt-2">
-              <button onClick={() => navigate('/login')} className="flex-1 py-2 text-xs font-semibold rounded-xl border border-light-border dark:border-dark-border">Sign In</button>
-              <button onClick={() => navigate('/signup')} className="flex-1 py-2 text-xs font-semibold rounded-xl bg-primary text-white">Get Started</button>
+          <div className="md:hidden bg-light-card dark:bg-dark-card border-b border-light-border dark:border-dark-border px-4 py-3 space-y-2 text-xs">
+            <a href="#product-preview" onClick={() => setMobileMenu(false)} className="block py-1 text-light-text-secondary dark:text-dark-text-secondary">Product</a>
+            <a href="#how-it-works" onClick={() => setMobileMenu(false)} className="block py-1 text-light-text-secondary dark:text-dark-text-secondary">How It Works</a>
+            <a href="#capabilities" onClick={() => setMobileMenu(false)} className="block py-1 text-light-text-secondary dark:text-dark-text-secondary">Capabilities</a>
+            <a href="#use-cases" onClick={() => setMobileMenu(false)} className="block py-1 text-light-text-secondary dark:text-dark-text-secondary">Use Cases</a>
+            <a href="#testimonials" onClick={() => setMobileMenu(false)} className="block py-1 text-light-text-secondary dark:text-dark-text-secondary">Testimonials</a>
+            <a href="#about" onClick={() => setMobileMenu(false)} className="block py-1 text-light-text-secondary dark:text-dark-text-secondary">About Us</a>
+            <a href="#pricing" onClick={() => setMobileMenu(false)} className="block py-1 text-light-text-secondary dark:text-dark-text-secondary">Pricing</a>
+            <div className="pt-2 flex gap-2">
+              <button onClick={() => navigate('/login')} className="flex-1 py-1.5 rounded-lg border border-light-border dark:border-dark-border text-center">Sign In</button>
+              <button onClick={() => navigate('/signup')} className="flex-1 py-1.5 rounded-lg bg-primary text-white text-center">Get Started</button>
             </div>
           </div>
         )}
       </nav>
 
-      {/* ─── Hero ─── */}
-      <section className="relative pt-28 pb-16 lg:pt-36 lg:pb-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="text-center max-w-4xl mx-auto space-y-6">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/20 text-xs font-semibold">
-              <FiZap className="w-3.5 h-3.5" /> Decision Intelligence Platform for SMEs
-            </div>
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-light-text-primary dark:text-dark-text-primary leading-tight">
-              Make confident, data-driven decisions for your business.
-            </h1>
-            <p className="text-sm sm:text-base text-light-text-secondary dark:text-dark-text-secondary max-w-2xl mx-auto leading-relaxed font-medium">
-              NexusAI consolidates your revenue, sales, expenses, and operational data into one intelligent cockpit. Get clear answers and predictive insights in seconds.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-              <button onClick={() => navigate('/signup')} className="w-full sm:w-auto px-6 py-3 text-xs font-bold rounded-xl bg-primary hover:bg-primary-hover text-white shadow-xs transition-all flex items-center justify-center gap-2">
-                Start 14-Day Free Trial
-                <FiArrowRight className="w-4 h-4" />
-              </button>
-              <button onClick={() => navigate('/dashboard')} className="w-full sm:w-auto px-6 py-3 text-xs font-bold rounded-xl bg-light-surface dark:bg-dark-surface hover:bg-slate-200 dark:hover:bg-slate-700 border border-light-border dark:border-dark-border text-light-text-primary dark:text-dark-text-primary transition-all">
-                Explore Live Demo
-              </button>
-            </div>
+      {/* ─── 29. HERO (Simple, clean, no glowing orbs or robots) ─── */}
+      <section className="pt-28 pb-14 sm:pt-36 sm:pb-20">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center space-y-5">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+            <span>Decision Intelligence for Indian SMEs</span>
           </div>
 
-          {/* Stats Bar */}
-          <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-5xl mx-auto">
-            {stats.map((s) => (
-              <div key={s.label} className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-2xl p-5 text-center shadow-card dark:shadow-card-dark">
-                <p className="text-2xl sm:text-3xl font-extrabold text-primary tracking-tight">{s.value}</p>
-                <p className="text-xs text-light-text-muted dark:text-dark-text-muted mt-1 font-medium">{s.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+          <h1 className="text-3xl sm:text-5xl font-semibold tracking-tight text-light-text-primary dark:text-dark-text-primary leading-[1.15]">
+            Understand your business. Decide with confidence.
+          </h1>
 
-      {/* ─── Features ─── */}
-      <section id="features" className="py-16 lg:py-24 border-t border-light-border dark:border-dark-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <span className="text-xs font-bold text-primary uppercase tracking-wider">Features</span>
-            <h2 className="mt-2 text-2xl sm:text-4xl font-extrabold tracking-tight">
-              Enterprise Tools Built for Growth
-            </h2>
-            <p className="mt-2 text-xs sm:text-sm text-light-text-muted dark:text-dark-text-muted max-w-lg mx-auto font-medium">
-              A comprehensive decision intelligence platform designed for CEOs, CFOs, and operational leaders.
-            </p>
+          <p className="text-sm sm:text-base text-light-text-secondary dark:text-dark-text-secondary max-w-2xl mx-auto leading-relaxed font-normal">
+            Bring your business data together, understand what is changing, and use AI-powered insights to decide what to do next.
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+            <button
+              onClick={() => navigate('/signup')}
+              className="w-full sm:w-auto px-5 py-2.5 text-xs font-semibold rounded-lg bg-primary hover:bg-primary-hover text-white shadow-card transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <span>Get Started</span>
+              <FiArrowRight className="w-3.5 h-3.5" />
+            </button>
+            <a
+              href="#product-preview"
+              className="w-full sm:w-auto px-5 py-2.5 text-xs font-medium rounded-lg bg-light-surface dark:bg-dark-surface hover:bg-slate-200/70 dark:hover:bg-dark-border/60 border border-light-border dark:border-dark-border text-light-text-primary dark:text-dark-text-primary transition-colors flex items-center justify-center cursor-pointer"
+            >
+              See how it works
+            </a>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {features.map((feature) => (
-              <div key={feature.title} className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-2xl p-6 shadow-card dark:shadow-card-dark hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 dark:bg-primary/20 text-primary dark:text-white flex items-center justify-center mb-4 border border-primary/20">
-                  <feature.icon className="w-5 h-5" />
-                </div>
-                <h3 className="text-base font-bold text-light-text-primary dark:text-dark-text-primary mb-2">{feature.title}</h3>
-                <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary leading-relaxed font-medium">{feature.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── AI Capabilities ─── */}
-      <section id="ai" className="py-16 lg:py-24 bg-light-surface/50 dark:bg-dark-surface/50 border-t border-light-border dark:border-dark-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+          {/* Social Proof metrics */}
+          <div className="pt-8 border-t border-light-border dark:border-dark-border max-w-3xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
             <div>
-              <span className="text-xs font-bold text-primary uppercase tracking-wider">Decision Copilot</span>
-              <h2 className="mt-2 text-2xl sm:text-3xl font-extrabold tracking-tight">
-                Your Autonomous AI Business Analyst
-              </h2>
-              <p className="mt-3 text-xs sm:text-sm text-light-text-secondary dark:text-dark-text-secondary leading-relaxed font-medium">
-                Ask business questions in natural language. Our AI core inspects financial metrics in real-time and delivers instant forecasts, risk flags, and strategic recommendations.
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-6">
-                {aiCapabilities.map((cap) => (
-                  <div key={cap} className="flex items-center gap-2 text-xs font-semibold text-light-text-primary dark:text-dark-text-primary">
-                    <div className="w-4 h-4 rounded-full bg-success-bg dark:bg-success/20 text-success flex items-center justify-center flex-shrink-0">
-                      <FiCheck className="w-3 h-3" />
-                    </div>
-                    {cap}
-                  </div>
-                ))}
-              </div>
-              <button onClick={() => navigate('/signup')} className="mt-6 px-5 py-2.5 text-xs font-semibold rounded-xl bg-primary hover:bg-primary-hover text-white shadow-xs transition-all">
-                Try AI Assistant Demo
-                <FiArrowRight className="inline ml-2 w-3.5 h-3.5" />
-              </button>
+              <p className="text-xl font-semibold text-light-text-primary dark:text-dark-text-primary">₹24.8L</p>
+              <p className="text-[11px] text-light-text-muted dark:text-dark-text-muted mt-0.5">Average SME Monthly Run</p>
             </div>
-
-            {/* AI Chat Preview Card */}
-            <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-2xl p-5 shadow-card-md dark:shadow-card-md-dark">
-              <div className="flex items-center gap-2.5 mb-4 border-b border-light-border dark:border-dark-border pb-3">
-                <div className="w-7 h-7 rounded-lg bg-primary text-white flex items-center justify-center">
-                  <FiZap className="w-3.5 h-3.5" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-light-text-primary dark:text-dark-text-primary">NexusAI Copilot</p>
-                  <p className="text-[10px] text-success font-semibold flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 bg-success rounded-full" /> Online Core
-                  </p>
-                </div>
-              </div>
-              <div className="space-y-3">
-                <div className="flex justify-end">
-                  <div className="bg-primary text-white rounded-2xl rounded-tr-xs px-3.5 py-2 text-xs max-w-xs font-medium">
-                    What's my revenue forecast for Q4 FY25?
-                  </div>
-                </div>
-                <div className="flex justify-start">
-                  <div className="bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border rounded-2xl rounded-tl-xs px-3.5 py-2.5 text-xs text-light-text-primary dark:text-dark-text-primary max-w-sm leading-relaxed font-medium">
-                    Based on your sales velocity across West and South zones, I project Q4 revenue between <strong className="text-primary font-bold">₹2.8Cr – ₹3.1Cr</strong>, representing <strong className="text-success font-bold">18–24% YoY growth</strong>. Enterprise tier is the primary driver at +28%.
-                  </div>
-                </div>
-              </div>
+            <div>
+              <p className="text-xl font-semibold text-light-text-primary dark:text-dark-text-primary">94.2%</p>
+              <p className="text-[11px] text-light-text-muted dark:text-dark-text-muted mt-0.5">Forecast Confidence</p>
+            </div>
+            <div>
+              <p className="text-xl font-semibold text-light-text-primary dark:text-dark-text-primary">100%</p>
+              <p className="text-[11px] text-light-text-muted dark:text-dark-text-muted mt-0.5">GST MCA Compliant</p>
+            </div>
+            <div>
+              <p className="text-xl font-semibold text-light-text-primary dark:text-dark-text-primary">24/7</p>
+              <p className="text-[11px] text-light-text-muted dark:text-dark-text-muted mt-0.5">Autonomous Risk Alerts</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ─── Testimonials ─── */}
-      <section id="testimonials" className="py-16 lg:py-24 border-t border-light-border dark:border-dark-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <span className="text-xs font-bold text-primary uppercase tracking-wider">Testimonials</span>
-            <h2 className="mt-2 text-2xl sm:text-3xl font-extrabold tracking-tight">
-              Trusted by Indian Business Leaders
-            </h2>
-          </div>
-          <div className="grid md:grid-cols-3 gap-6">
-            {testimonials.map((t) => (
-              <div key={t.name} className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-2xl p-6 shadow-card dark:shadow-card-dark flex flex-col justify-between">
+      {/* ─── 30. PRODUCT PREVIEW (The product itself as hero visual) ─── */}
+      <section id="product-preview" className="pb-16 sm:pb-24">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+          <div className="rounded-xl border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-card shadow-card-lg dark:shadow-card-lg-dark overflow-hidden">
+            {/* Top Mock Window Bar */}
+            <div className="px-4 py-2.5 bg-light-surface/70 dark:bg-dark-surface/70 border-b border-light-border dark:border-dark-border flex items-center justify-between text-xs text-light-text-muted dark:text-dark-text-muted">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-danger/50" />
+                <span className="w-2.5 h-2.5 rounded-full bg-warning/50" />
+                <span className="w-2.5 h-2.5 rounded-full bg-success/50" />
+                <span className="ml-2 font-mono text-[11px]">app.insightiq.in/dashboard</span>
+              </div>
+              <span className="text-[10px] font-medium text-primary">Live Cockpit Preview</span>
+            </div>
+
+            {/* Realistic Dashboard Preview UI */}
+            <div className="p-4 sm:p-6 space-y-5 bg-light-bg dark:bg-dark-bg">
+              {/* Header preview */}
+              <div className="flex items-center justify-between pb-3 border-b border-light-border dark:border-dark-border">
                 <div>
-                  <div className="flex gap-0.5 mb-3">
-                    {Array.from({ length: t.rating }).map((_, i) => (
-                      <FiStar key={i} className="w-3.5 h-3.5 text-warning fill-current" />
-                    ))}
-                  </div>
-                  <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary leading-relaxed mb-6 font-medium">"{t.content}"</p>
+                  <span className="text-[10px] text-light-text-muted dark:text-dark-text-muted">Business overview • September 2026</span>
+                  <h3 className="text-base font-semibold text-light-text-primary dark:text-dark-text-primary">
+                    Good morning, Dhwanit
+                  </h3>
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-primary text-white flex items-center justify-center text-xs font-bold shadow-xs">
-                    {t.name.split(' ').map(n => n[0]).join('')}
+                <span className="text-[11px] px-2.5 py-1 rounded-md bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border font-medium">
+                  September 2026
+                </span>
+              </div>
+
+              {/* 4 KPIs preview */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="p-3.5 rounded-lg bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border shadow-card">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-light-text-secondary dark:text-dark-text-secondary font-medium">Revenue</span>
+                    <span className="text-[10px] text-success font-semibold bg-success/10 px-1.5 py-0.5 rounded-full">+12.4%</span>
+                  </div>
+                  <p className="text-lg font-bold text-light-text-primary dark:text-dark-text-primary mt-1">₹24.8L</p>
+                  <p className="text-[10px] text-light-text-muted dark:text-dark-text-muted mt-0.5">vs last month</p>
+                </div>
+
+                <div className="p-3.5 rounded-lg bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border shadow-card">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-light-text-secondary dark:text-dark-text-secondary font-medium">Profit</span>
+                    <span className="text-[10px] text-success font-semibold bg-success/10 px-1.5 py-0.5 rounded-full">+8.7%</span>
+                  </div>
+                  <p className="text-lg font-bold text-light-text-primary dark:text-dark-text-primary mt-1">₹6.4L</p>
+                  <p className="text-[10px] text-light-text-muted dark:text-dark-text-muted mt-0.5">vs last month</p>
+                </div>
+
+                <div className="p-3.5 rounded-lg bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border shadow-card">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-light-text-secondary dark:text-dark-text-secondary font-medium">Expenses</span>
+                    <span className="text-[10px] text-danger font-semibold bg-danger/10 px-1.5 py-0.5 rounded-full">+3.2%</span>
+                  </div>
+                  <p className="text-lg font-bold text-light-text-primary dark:text-dark-text-primary mt-1">₹18.4L</p>
+                  <p className="text-[10px] text-light-text-muted dark:text-dark-text-muted mt-0.5">vs last month</p>
+                </div>
+
+                <div className="p-3.5 rounded-lg bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border shadow-card">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-light-text-secondary dark:text-dark-text-secondary font-medium">Business Health</span>
+                    <span className="text-[10px] text-success font-semibold bg-success/10 px-1.5 py-0.5 rounded-full">+4 pts</span>
+                  </div>
+                  <p className="text-lg font-bold text-light-text-primary dark:text-dark-text-primary mt-1">82/100</p>
+                  <p className="text-[10px] text-light-text-muted dark:text-dark-text-muted mt-0.5">Grade A • Strong</p>
+                </div>
+              </div>
+
+              {/* Performance chart preview */}
+              <div className="p-4 rounded-lg bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border shadow-card">
+                <div className="flex justify-between items-center mb-3">
+                  <div>
+                    <h4 className="text-xs font-semibold text-light-text-primary dark:text-dark-text-primary">
+                      Primary Trajectory: Revenue & Profit Trend
+                    </h4>
+                    <p className="text-[10px] text-light-text-muted dark:text-dark-text-muted">Monthly trajectory in ₹ Lakhs</p>
+                  </div>
+                  <div className="flex items-center gap-3 text-[11px]">
+                    <span className="flex items-center gap-1 text-light-text-secondary dark:text-dark-text-secondary">
+                      <span className="w-2 h-2 rounded-full bg-primary" /> Revenue
+                    </span>
+                    <span className="flex items-center gap-1 text-light-text-secondary dark:text-dark-text-secondary">
+                      <span className="w-2 h-2 rounded-full bg-success" /> Profit
+                    </span>
+                  </div>
+                </div>
+                <div className="h-[200px] w-full">
+                  <AreaChartWidget
+                    data={previewChartData}
+                    keys={[
+                      { key: 'revenue', name: 'Revenue (₹L)', color: '#5278A6' },
+                      { key: 'profit', name: 'Net Profit (₹L)', color: '#5A8065' },
+                    ]}
+                    formatter={(v) => `₹${v}L`}
+                    height={200}
+                  />
+                </div>
+              </div>
+
+              {/* AI Insight preview */}
+              <div className="p-3.5 rounded-lg bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border shadow-card space-y-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] uppercase tracking-wider font-semibold text-primary">
+                    Business Insight
+                  </span>
+                  <span className="text-[10px] text-light-text-muted dark:text-dark-text-muted">
+                    Source: Sales + Inventory data
+                  </span>
+                </div>
+                <p className="font-semibold text-light-text-primary dark:text-dark-text-primary text-xs sm:text-sm">
+                  Revenue increased 12.4% this month.
+                </p>
+                <div className="grid sm:grid-cols-2 gap-2 text-[11px] text-light-text-secondary dark:text-dark-text-secondary pt-1">
+                  <div>
+                    <strong className="text-light-text-primary dark:text-dark-text-primary">Why it changed: </strong>
+                    Retail orders increased across Mumbai and Pune hubs (+24% order frequency).
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-light-text-primary dark:text-dark-text-primary">{t.name}</p>
-                    <p className="text-[10px] text-light-text-muted dark:text-dark-text-muted font-medium">{t.role}</p>
+                    <strong className="text-light-text-primary dark:text-dark-text-primary">Recommended action: </strong>
+                    Review inventory levels for highest-performing category before festive demand.
                   </div>
                 </div>
+                <div className="pt-2 border-t border-light-border dark:border-dark-border flex justify-between items-center text-[10px] text-light-text-muted dark:text-dark-text-muted">
+                  <span>Confidence: 91% • Based on 3,842 records, 12 months historical data</span>
+                  <span className="text-primary font-medium">Verified by InsightIQ</span>
+                </div>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── About Us ─── */}
-      <section id="about" className="py-16 lg:py-24 bg-light-surface/40 dark:bg-dark-surface/40 border-t border-light-border dark:border-dark-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-start">
-            {/* Left Column */}
-            <div className="space-y-4">
-              <span className="text-xs font-bold text-primary uppercase tracking-wider">ABOUT US</span>
-              <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-light-text-primary dark:text-dark-text-primary leading-tight">
-                Helping businesses make better decisions.
-              </h2>
-              <p className="text-xs sm:text-sm text-light-text-secondary dark:text-dark-text-secondary leading-relaxed font-medium pt-1">
-                Running a business means making hundreds of decisions every day. We believe those decisions should be backed by information that is clear, relevant and easy to understand.
-              </p>
-              <p className="text-xs sm:text-sm text-light-text-secondary dark:text-dark-text-secondary leading-relaxed font-medium">
-                Our platform brings business data together and uses AI to highlight what matters, explain why it matters, and help business owners decide what to do next.
-              </p>
-            </div>
-
-            {/* Right Column — 4 Clean Cards */}
-            <div className="grid sm:grid-cols-2 gap-4">
-              {aboutPillars.map((p) => {
-                const Icon = p.icon;
-                return (
-                  <div key={p.num} className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-2xl p-5 shadow-card dark:shadow-card-dark space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-mono font-bold text-primary">{p.num}</span>
-                      <div className="w-7 h-7 rounded-lg bg-primary/10 dark:bg-primary/20 text-primary flex items-center justify-center">
-                        <Icon className="w-3.5 h-3.5" />
-                      </div>
-                    </div>
-                    <h3 className="text-sm font-bold text-light-text-primary dark:text-dark-text-primary">{p.title}</h3>
-                    <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary leading-relaxed font-medium">{p.desc}</p>
-                  </div>
-                );
-              })}
             </div>
           </div>
         </div>
       </section>
 
-      {/* ─── Pricing ─── */}
-      <section id="pricing" className="py-16 lg:py-24 border-t border-light-border dark:border-dark-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <span className="text-xs font-bold text-primary uppercase tracking-wider">Pricing</span>
-            <h2 className="mt-2 text-2xl sm:text-3xl font-extrabold tracking-tight">
-              Simple Plans for SME Growth
+      {/* ─── HOW IT WORKS ─── */}
+      <section id="how-it-works" className="py-14 sm:py-20 border-t border-light-border dark:border-dark-border bg-light-surface/40 dark:bg-dark-surface/40">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-10">
+            <span className="text-[11px] uppercase tracking-wider font-semibold text-primary">
+              Simple Workflow
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-light-text-primary dark:text-dark-text-primary mt-1">
+              How InsightIQ Works
             </h2>
-            <p className="mt-2 text-xs sm:text-sm text-light-text-muted dark:text-dark-text-muted max-w-lg mx-auto font-medium">Start with a 14-day trial and scale as your company grows.</p>
+            <p className="text-xs sm:text-sm text-light-text-muted dark:text-dark-text-muted mt-1 max-w-lg mx-auto">
+              Three clear stages designed for SME leaders who need answers, not complex query builders.
+            </p>
           </div>
-          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            {pricingPlans.map((plan) => (
-              <div key={plan.name} className={`bg-light-card dark:bg-dark-card border rounded-2xl p-6 shadow-card dark:shadow-card-dark relative flex flex-col justify-between ${plan.popular ? 'border-primary' : 'border-light-border dark:border-dark-border'}`}>
-                {plan.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-primary text-white text-[10px] font-bold uppercase tracking-wider">
-                    Recommended
-                  </div>
-                )}
-                <div>
-                  <div className="mb-5">
-                    <h3 className="text-base font-bold text-light-text-primary dark:text-dark-text-primary">{plan.name}</h3>
-                    <p className="text-xs text-light-text-muted dark:text-dark-text-muted mt-0.5 font-medium">{plan.description}</p>
-                    <div className="mt-3">
-                      <span className="text-3xl font-extrabold text-light-text-primary dark:text-dark-text-primary tracking-tight">{plan.price}</span>
-                      <span className="text-light-text-muted dark:text-dark-text-muted text-xs font-medium">{plan.period}</span>
-                    </div>
-                  </div>
-                  <ul className="space-y-2.5 mb-6 border-t border-light-border dark:border-dark-border pt-4">
-                    {plan.features.map((f) => (
-                      <li key={f} className="flex items-center gap-2 text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium">
-                        <FiCheck className="w-3.5 h-3.5 text-primary flex-shrink-0" />
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            <div className="p-5 rounded-xl bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border shadow-card space-y-2">
+              <span className="text-xs font-mono font-semibold text-primary">01</span>
+              <h3 className="text-sm font-semibold text-light-text-primary dark:text-dark-text-primary">
+                Connect Business Records
+              </h3>
+              <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary leading-relaxed">
+                Connect Tally, ERP, sales orders, bank statements, or CSV journals in minutes. No complex database migrations.
+              </p>
+            </div>
+
+            <div className="p-5 rounded-xl bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border shadow-card space-y-2">
+              <span className="text-xs font-mono font-semibold text-primary">02</span>
+              <h3 className="text-sm font-semibold text-light-text-primary dark:text-dark-text-primary">
+                Continuous Analysis
+              </h3>
+              <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary leading-relaxed">
+                Algorithms continuously evaluate gross profit margins, inventory burn rate, receivables lag, and regional variance.
+              </p>
+            </div>
+
+            <div className="p-5 rounded-xl bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border shadow-card space-y-2">
+              <span className="text-xs font-mono font-semibold text-primary">03</span>
+              <h3 className="text-sm font-semibold text-light-text-primary dark:text-dark-text-primary">
+                Decide with Clear Evidence
+              </h3>
+              <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary leading-relaxed">
+                Receive plain-language answers explaining what changed, why it changed, and what specific action to execute.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── CAPABILITIES ─── */}
+      <section id="capabilities" className="py-14 sm:py-20 border-t border-light-border dark:border-dark-border">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-10">
+            <span className="text-[11px] uppercase tracking-wider font-semibold text-primary">
+              Enterprise Features
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-light-text-primary dark:text-dark-text-primary mt-1">
+              Industrial-Grade Tools for SME Growth
+            </h2>
+            <p className="text-xs sm:text-sm text-light-text-muted dark:text-dark-text-muted mt-1 max-w-lg mx-auto">
+              Everything required to manage financial viability, supply chains, and customer revenue.
+            </p>
+          </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {[
+              {
+                icon: FiBarChart2,
+                title: 'Revenue & Margin Intelligence',
+                desc: 'Track gross vs net margins, detect product line margin compression, and monitor regional order velocity.',
+              },
+              {
+                icon: FiDatabase,
+                title: 'Supply Chain Risk Alerts',
+                desc: 'Early warning indicators for inventory stockout risks, vendor lead times, and freight transport delays.',
+              },
+              {
+                icon: FiShield,
+                title: 'Working Capital & Cash Flow',
+                desc: 'Evaluate 6-month cash runway, model receivables payment cycles, and optimize vendor settlement terms.',
+              },
+              {
+                icon: FiLayers,
+                title: 'Account Churn Prediction',
+                desc: 'Identify corporate accounts exhibiting usage reduction before contracts expire, protecting ARR.',
+              },
+              {
+                icon: FiTrendingUp,
+                title: 'GST & Audit Reconciliation',
+                desc: 'Generate audit-ready P&L reports compliant with Indian GST requirements and MCA filing norms.',
+              },
+              {
+                icon: FiAlertCircle,
+                title: 'Autonomous Business Copilot',
+                desc: 'Ask direct executive questions in natural language and receive structured evidence-backed analysis.',
+              },
+            ].map((cap, i) => (
+              <div
+                key={i}
+                className="p-5 rounded-xl bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border shadow-card space-y-2 hover:border-slate-300 dark:hover:border-slate-600 transition-colors"
+              >
+                <div className="w-8 h-8 rounded-lg bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border flex items-center justify-center text-primary mb-2">
+                  <cap.icon className="w-4 h-4" />
                 </div>
-                <button
-                  onClick={() => navigate('/signup')}
-                  className={`w-full py-2.5 rounded-xl text-xs font-semibold transition-all ${
-                    plan.popular
-                      ? 'bg-primary hover:bg-primary-hover text-white shadow-xs'
-                      : 'bg-light-surface dark:bg-dark-surface hover:bg-slate-200 dark:hover:bg-slate-700 text-light-text-primary dark:text-dark-text-primary border border-light-border dark:border-dark-border'
-                  }`}
-                >
-                  {plan.name === 'Enterprise Tier' ? 'Contact Sales' : 'Start Free Trial'}
-                </button>
+                <h3 className="text-sm font-semibold text-light-text-primary dark:text-dark-text-primary">
+                  {cap.title}
+                </h3>
+                <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary leading-relaxed">
+                  {cap.desc}
+                </p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ─── Footer ─── */}
-      <footer className="border-t border-light-border dark:border-dark-border py-10 bg-light-card dark:bg-dark-card">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg bg-primary text-white flex items-center justify-center">
-                <FiZap className="w-3.5 h-3.5" />
-              </div>
-              <span className="font-bold text-sm text-light-text-primary dark:text-dark-text-primary">NexusAI</span>
-            </div>
-            <p className="text-xs text-light-text-muted dark:text-dark-text-muted font-medium">© 2025 NexusAI Platform. Enterprise Decision Intelligence for Indian SMEs.</p>
+      {/* ─── USE CASES ─── */}
+      <section id="use-cases" className="py-14 sm:py-20 border-t border-light-border dark:border-dark-border bg-light-surface/40 dark:bg-dark-surface/40">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-10">
+            <span className="text-[11px] uppercase tracking-wider font-semibold text-primary">
+              Built for Decision Makers
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-light-text-primary dark:text-dark-text-primary mt-1">
+              Who Uses InsightIQ
+            </h2>
           </div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            <div className="p-5 rounded-xl bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border shadow-card space-y-3">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-primary">
+                For Founders & CEOs
+              </span>
+              <h3 className="text-sm font-semibold text-light-text-primary dark:text-dark-text-primary">
+                Executive Clarity in Minutes
+              </h3>
+              <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary leading-relaxed">
+                Replace fragmented spreadsheets with a single business health cockpit. Know exactly what changed in sales, profit, and risk every morning.
+              </p>
+            </div>
+
+            <div className="p-5 rounded-xl bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border shadow-card space-y-3">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-primary">
+                For CFOs & Finance Teams
+              </span>
+              <h3 className="text-sm font-semibold text-light-text-primary dark:text-dark-text-primary">
+                Margin & Cash Flow Control
+              </h3>
+              <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary leading-relaxed">
+                Monitor invoice aging, forecast seasonal working capital needs, and generate audit-ready GST filing statements with one click.
+              </p>
+            </div>
+
+            <div className="p-5 rounded-xl bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border shadow-card space-y-3">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-primary">
+                For Operations Managers
+              </span>
+              <h3 className="text-sm font-semibold text-light-text-primary dark:text-dark-text-primary">
+                Supply Chain Resilience
+              </h3>
+              <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary leading-relaxed">
+                Track low inventory thresholds across regional warehouses (e.g. Surat, Bhiwandi, Pune) and prevent costly manufacturing stoppages.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── TESTIMONIALS (Realistic Indian SME Context) ─── */}
+      <section id="testimonials" className="py-14 sm:py-20 border-t border-light-border dark:border-dark-border">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-10">
+            <span className="text-[11px] uppercase tracking-wider font-semibold text-primary">
+              Client Validation
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-light-text-primary dark:text-dark-text-primary mt-1">
+              Trusted by Indian SME Leaders
+            </h2>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              {
+                quote: "InsightIQ gave us immediate visibility into retail reorders across Maharashtra. The inventory risk warning saved us from stockouts during our peak festive season.",
+                author: "Rajesh Sharma",
+                role: "Managing Director, Arvind Textiles Pvt. Ltd.",
+              },
+              {
+                quote: "The AI analyst feels like having a senior financial director on call. It does not just show numbers—it explains why profit changed and what vendor contracts to renegotiate.",
+                author: "Sunil Agarwal",
+                role: "CFO, NovaMart Retail Pvt. Ltd.",
+              },
+              {
+                quote: "We consolidated our accounting and dispatch logs in one morning. The 82/100 business health score is now our executive team's weekly benchmark.",
+                author: "Ananya Iyer",
+                role: "Operations Lead, Shreeji Foods Pvt. Ltd.",
+              },
+            ].map((t, i) => (
+              <div
+                key={i}
+                className="p-5 rounded-xl bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border shadow-card flex flex-col justify-between"
+              >
+                <div className="space-y-3">
+                  <div className="flex gap-0.5 text-warning">
+                    {Array.from({ length: 5 }).map((_, j) => (
+                      <FiStar key={j} className="w-3 h-3 fill-current" />
+                    ))}
+                  </div>
+                  <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary leading-relaxed">
+                    "{t.quote}"
+                  </p>
+                </div>
+                <div className="pt-4 mt-4 border-t border-light-border dark:border-dark-border">
+                  <p className="text-xs font-semibold text-light-text-primary dark:text-dark-text-primary">{t.author}</p>
+                  <p className="text-[11px] text-light-text-muted dark:text-dark-text-muted mt-0.5">{t.role}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── 31. ABOUT US (Kept after Testimonials, human copy, no corporate buzzwords) ─── */}
+      <section id="about" className="py-14 sm:py-20 border-t border-light-border dark:border-dark-border bg-light-surface/40 dark:bg-dark-surface/40">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 space-y-6">
+          <div>
+            <span className="text-[11px] uppercase tracking-wider font-semibold text-primary">
+              About Us
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-light-text-primary dark:text-dark-text-primary mt-1">
+              Why We Built InsightIQ
+            </h2>
+          </div>
+
+          <div className="space-y-4 text-xs sm:text-sm text-light-text-secondary dark:text-dark-text-secondary leading-relaxed">
+            <p>
+              Running an SME in India means making critical decisions every day—pricing wholesale orders, negotiating credit terms, balancing stock across regional warehouses, and managing cash flow.
+            </p>
+            <p>
+              Most businesses have data, but it is trapped across accounting software, dispatch registers, supplier PDFs, and spreadsheets. Business owners end up waiting until the end of the month to discover whether margins contracted or inventory stalled.
+            </p>
+            <p>
+              We built InsightIQ to give growing Indian enterprises the same analytical precision and intelligence that multinational corporations enjoy, without requiring a team of data scientists. We believe business software should be calm, credible, fast, and easy to understand every day.
+            </p>
+          </div>
+
+          <div className="grid sm:grid-cols-3 gap-4 pt-4">
+            <div className="p-4 rounded-lg bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border shadow-card">
+              <h4 className="text-xs font-semibold text-light-text-primary dark:text-dark-text-primary">Who It's For</h4>
+              <p className="text-[11px] text-light-text-muted dark:text-dark-text-muted mt-1 leading-relaxed">
+                Indian SMEs, manufacturers, distributors, and B2B SaaS companies managing ₹50L to ₹50Cr annual turnover.
+              </p>
+            </div>
+            <div className="p-4 rounded-lg bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border shadow-card">
+              <h4 className="text-xs font-semibold text-light-text-primary dark:text-dark-text-primary">Problem We Solve</h4>
+              <p className="text-[11px] text-light-text-muted dark:text-dark-text-muted mt-1 leading-relaxed">
+                Eliminating delayed decision-making caused by fragmented data and slow manual monthly reconciliations.
+              </p>
+            </div>
+            <div className="p-4 rounded-lg bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border shadow-card">
+              <h4 className="text-xs font-semibold text-light-text-primary dark:text-dark-text-primary">Our Principle</h4>
+              <p className="text-[11px] text-light-text-muted dark:text-dark-text-muted mt-1 leading-relaxed">
+                Explainable AI: never show a metric without explaining what changed, why it changed, and the verified data source.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── PRICING ─── */}
+      <section id="pricing" className="py-14 sm:py-20 border-t border-light-border dark:border-dark-border">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-10">
+            <span className="text-[11px] uppercase tracking-wider font-semibold text-primary">
+              Transparent Plans
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-light-text-primary dark:text-dark-text-primary mt-1">
+              Predictable Pricing for Indian Businesses
+            </h2>
+            <p className="text-xs sm:text-sm text-light-text-muted dark:text-dark-text-muted mt-1 max-w-md mx-auto">
+              Every tier includes live KPI tracking, GST audit formatting, and explainable AI insights.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+            {/* Starter */}
+            <div className="p-5 rounded-xl bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border shadow-card flex flex-col justify-between">
+              <div className="space-y-3">
+                <span className="text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary">Starter Tier</span>
+                <div>
+                  <span className="text-2xl font-bold text-light-text-primary dark:text-dark-text-primary">₹3,999</span>
+                  <span className="text-xs text-light-text-muted dark:text-dark-text-muted"> / month</span>
+                </div>
+                <p className="text-xs text-light-text-muted dark:text-dark-text-muted">For small business teams establishing data tracking.</p>
+                <ul className="space-y-2 text-xs text-light-text-secondary dark:text-dark-text-secondary pt-2 border-t border-light-border dark:border-dark-border">
+                  <li className="flex items-center gap-1.5"><FiCheck className="w-3.5 h-3.5 text-success" /> 5 Team Seats</li>
+                  <li className="flex items-center gap-1.5"><FiCheck className="w-3.5 h-3.5 text-success" /> Core Revenue & P&L Cockpit</li>
+                  <li className="flex items-center gap-1.5"><FiCheck className="w-3.5 h-3.5 text-success" /> 1,000 Monthly AI Queries</li>
+                  <li className="flex items-center gap-1.5"><FiCheck className="w-3.5 h-3.5 text-success" /> Automated Monthly Statements</li>
+                </ul>
+              </div>
+              <button
+                onClick={() => navigate('/signup')}
+                className="mt-6 w-full py-2 rounded-lg bg-light-surface dark:bg-dark-surface hover:bg-slate-200/70 dark:hover:bg-dark-border/60 border border-light-border dark:border-dark-border text-xs font-medium cursor-pointer transition-colors"
+              >
+                Start Evaluation
+              </button>
+            </div>
+
+            {/* Professional */}
+            <div className="p-5 rounded-xl bg-light-card dark:bg-dark-card border-2 border-primary shadow-card flex flex-col justify-between relative">
+              <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full bg-primary text-white text-[10px] font-semibold uppercase tracking-wider">
+                Recommended
+              </span>
+              <div className="space-y-3">
+                <span className="text-xs font-semibold text-primary">Professional Tier</span>
+                <div>
+                  <span className="text-2xl font-bold text-light-text-primary dark:text-dark-text-primary">₹11,999</span>
+                  <span className="text-xs text-light-text-muted dark:text-dark-text-muted"> / month</span>
+                </div>
+                <p className="text-xs text-light-text-muted dark:text-dark-text-muted">For growing enterprises with multi-hub distribution.</p>
+                <ul className="space-y-2 text-xs text-light-text-secondary dark:text-dark-text-secondary pt-2 border-t border-light-border dark:border-dark-border">
+                  <li className="flex items-center gap-1.5"><FiCheck className="w-3.5 h-3.5 text-primary" /> 25 Team Seats</li>
+                  <li className="flex items-center gap-1.5"><FiCheck className="w-3.5 h-3.5 text-primary" /> Supply Chain & Inventory Alerts</li>
+                  <li className="flex items-center gap-1.5"><FiCheck className="w-3.5 h-3.5 text-primary" /> Corporate Account Churn Models</li>
+                  <li className="flex items-center gap-1.5"><FiCheck className="w-3.5 h-3.5 text-primary" /> 10,000 Monthly AI Queries</li>
+                  <li className="flex items-center gap-1.5"><FiCheck className="w-3.5 h-3.5 text-primary" /> Custom Audit Exports & GST Sync</li>
+                </ul>
+              </div>
+              <button
+                onClick={() => navigate('/signup')}
+                className="mt-6 w-full py-2 rounded-lg bg-primary hover:bg-primary-hover text-white text-xs font-medium cursor-pointer transition-colors shadow-card"
+              >
+                Start 14-Day Free Trial
+              </button>
+            </div>
+
+            {/* Enterprise */}
+            <div className="p-5 rounded-xl bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border shadow-card flex flex-col justify-between">
+              <div className="space-y-3">
+                <span className="text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary">Enterprise Tier</span>
+                <div>
+                  <span className="text-2xl font-bold text-light-text-primary dark:text-dark-text-primary">Custom</span>
+                </div>
+                <p className="text-xs text-light-text-muted dark:text-dark-text-muted">For large SME groups and conglomerate divisions.</p>
+                <ul className="space-y-2 text-xs text-light-text-secondary dark:text-dark-text-secondary pt-2 border-t border-light-border dark:border-dark-border">
+                  <li className="flex items-center gap-1.5"><FiCheck className="w-3.5 h-3.5 text-success" /> Unlimited Team Seats</li>
+                  <li className="flex items-center gap-1.5"><FiCheck className="w-3.5 h-3.5 text-success" /> Full ERP & SAP/Tally Connectors</li>
+                  <li className="flex items-center gap-1.5"><FiCheck className="w-3.5 h-3.5 text-success" /> Custom Machine Learning Models</li>
+                  <li className="flex items-center gap-1.5"><FiCheck className="w-3.5 h-3.5 text-success" /> Dedicated Account Director & SLA</li>
+                </ul>
+              </div>
+              <button
+                onClick={() => navigate('/signup')}
+                className="mt-6 w-full py-2 rounded-lg bg-light-surface dark:bg-dark-surface hover:bg-slate-200/70 dark:hover:bg-dark-border/60 border border-light-border dark:border-dark-border text-xs font-medium cursor-pointer transition-colors"
+              >
+                Contact Sales
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── FINAL CTA ─── */}
+      <section className="py-14 sm:py-20 border-t border-light-border dark:border-dark-border bg-light-surface/40 dark:bg-dark-surface/40">
+        <div className="max-w-3xl mx-auto px-4 text-center space-y-4">
+          <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-light-text-primary dark:text-dark-text-primary">
+            Ready to understand your business performance?
+          </h2>
+          <p className="text-xs sm:text-sm text-light-text-muted dark:text-dark-text-muted max-w-lg mx-auto">
+            Experience our decision intelligence platform with preloaded Indian SME data in 60 seconds.
+          </p>
+          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <button
+              onClick={() => navigate('/signup')}
+              className="w-full sm:w-auto px-6 py-2.5 rounded-lg bg-primary hover:bg-primary-hover text-white text-xs font-semibold shadow-card transition-colors cursor-pointer"
+            >
+              Get Started Free
+            </button>
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="w-full sm:w-auto px-6 py-2.5 rounded-lg bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border hover:border-slate-300 dark:hover:border-slate-600 text-xs font-medium text-light-text-primary dark:text-dark-text-primary transition-colors cursor-pointer"
+            >
+              View Live Cockpit
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── FOOTER ─── */}
+      <footer className="border-t border-light-border dark:border-dark-border py-8 text-xs text-light-text-muted dark:text-dark-text-muted">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <div className="w-5 h-5 rounded bg-primary text-white flex items-center justify-center font-bold text-[10px]">
+              IQ
+            </div>
+            <span className="font-semibold text-light-text-primary dark:text-dark-text-primary">InsightIQ</span>
+            <span>• Decision Intelligence for Indian SMEs</span>
+          </div>
+          <p className="text-[11px]">Â© 2026 InsightIQ Platform. All rights reserved.</p>
         </div>
       </footer>
     </div>

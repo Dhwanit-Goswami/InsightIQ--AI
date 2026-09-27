@@ -10,6 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.core.config import settings
 from app.core.database import Base
+import app.models  # noqa: F401 - ensure models are registered on Base.metadata
 
 # Alembic Config object
 config = context.config

@@ -1,43 +1,78 @@
-// ─── Dashboard KPIs (Indian Business Context — ₹ Scale) ────────────────
+// ─── Dashboard KPIs (Indian Business Context — ₹ Scale per Section 15 & 40) ────
 export const kpiData = {
-  revenue: { value: '₹4.82Cr', change: '+18.4%', trend: 'up', label: 'Total Revenue', period: 'vs last quarter' },
-  profit: { value: '₹1.24Cr', change: '+12.7%', trend: 'up', label: 'Net Profit', period: 'vs last quarter' },
-  expenses: { value: '₹3.58Cr', change: '-4.2%', trend: 'down', label: 'Total Expenses', period: 'vs last quarter' },
-  cashFlow: { value: '₹89.0L', change: '+22.1%', trend: 'up', label: 'Cash Flow', period: 'vs last quarter' },
-  customers: { value: '12,847', change: '+8.9%', trend: 'up', label: 'Active Clients', period: 'vs last month' },
-  orders: { value: '3,421', change: '+15.3%', trend: 'up', label: 'Total Orders', period: 'this month' },
-  inventory: { value: '98,240', change: '-2.1%', trend: 'down', label: 'Inventory Units', period: 'vs last week' },
-  employees: { value: '247', change: '+3', trend: 'up', label: 'Employees', period: 'this month' },
-  growth: { value: '18.4%', change: '+5.2%', trend: 'up', label: 'YoY Growth', period: 'year over year' },
-  businessHealth: { value: 87, label: 'Business Health Score', grade: 'A', description: 'Strong operational efficiency across regional hubs' },
-  aiConfidence: { value: 94, label: 'AI Confidence Score', description: 'High probability in Q4 forecasting models' },
-  riskScore: { value: 23, label: 'Risk Score', grade: 'Low', description: 'Low operational & financial risk' },
+  revenue: {
+    value: '₹24.8L',
+    change: '+12.4%',
+    trend: 'up',
+    label: 'Revenue',
+    period: 'vs last month',
+    tooltip: 'Total gross revenue collected across Indian regional hubs this month'
+  },
+  profit: {
+    value: '₹6.4L',
+    change: '+8.7%',
+    trend: 'up',
+    label: 'Profit',
+    period: 'vs last month',
+    tooltip: 'Net operating profit after variable costs and GST deductions'
+  },
+  expenses: {
+    value: '₹18.4L',
+    change: '+3.2%',
+    trend: 'down',
+    label: 'Expenses',
+    period: 'vs last month',
+    tooltip: 'Operating expenses including infrastructure, logistics, and payroll'
+  },
+  businessHealth: {
+    value: '82/100',
+    change: '+4 pts',
+    trend: 'up',
+    label: 'Business Health',
+    period: 'composite score',
+    tooltip: 'Operational stability, margin resilience, and cash flow health rating'
+  },
+
+  // Supporting metrics for secondary views
+  customers: { value: '1,420', change: '+8.9%', trend: 'up', label: 'Active Clients', period: 'vs last month' },
+  orders: { value: '3,842', change: '+15.3%', trend: 'up', label: 'Orders Processed', period: 'this month' },
+  inventory: { value: '98,240', change: '-2.1%', trend: 'down', label: 'Units in Stock', period: 'vs last week' },
 };
 
 export const quickActions = [
-  { id: 'report', label: 'Generate Report', icon: 'FiFileText', color: 'primary' },
-  { id: 'ai', label: 'Ask AI', icon: 'FiZap', color: 'slate' },
-  { id: 'forecast', label: 'Revenue Forecast', icon: 'FiTrendingUp', color: 'green' },
-  { id: 'export', label: 'Export Data', icon: 'FiDownload', color: 'amber' },
+  { id: 'report', label: 'Generate Report', icon: 'FiFileText' },
+  { id: 'ai', label: 'Ask AI Analyst', icon: 'FiCpu' },
+  { id: 'forecast', label: 'Revenue Forecast', icon: 'FiTrendingUp' },
+  { id: 'export', label: 'Export Data', icon: 'FiDownload' },
 ];
 
+export const aiPrimaryInsight = {
+  headline: 'Revenue increased 12.4% this month.',
+  whyChanged: 'Retail orders increased across Mumbai and Pune hubs (+24% order frequency). B2B wholesale demand also remained steady.',
+  recommendedAction: 'Review inventory levels for the highest-performing category before festive demand to avoid stockouts in Gujarat and Maharashtra belts.',
+  confidence: 91,
+  confidenceBasis: '3,842 sales records, 12 months of historical data',
+  sources: 'Sales + Inventory data',
+  category: 'Revenue & Inventory',
+};
+
 export const aiSummary = {
-  headline: 'Strong Q3 Performance — Revenue up 18.4% across Indian Operations',
-  body: 'Your enterprise is performing strongly this quarter. Total revenue reached ₹4.82Cr, driven primarily by a 23% expansion in B2B tier customer acquisitions in Mumbai and Bengaluru hubs. Client retention remains solid at 94.2%. AI models project Q4 revenue between ₹5.2Cr – ₹5.8Cr if current operational momentum is maintained.',
+  headline: 'Revenue increased 12.4% this month across Indian operations.',
+  body: 'Your business is demonstrating sustained operating performance. Revenue expanded to ₹24.8L with net margin holding at 25.8%. B2B client reorder rates in Western zones accelerated by 18%, while operational expenses were held within 3.2% of target budget.',
   highlights: [
-    { text: 'Revenue up 18.4% QoQ', type: 'positive' },
-    { text: 'Client retention at 94.2%', type: 'positive' },
-    { text: 'Operating expenses reduced by 4.2%', type: 'positive' },
-    { text: 'Surat hub inventory slightly below target', type: 'warning' },
+    { text: 'Revenue up 12.4% MoM', type: 'positive' },
+    { text: 'Client retention solid at 94.2%', type: 'positive' },
+    { text: 'Operating expenses stable (+3.2%)', type: 'positive' },
+    { text: 'SKU-8821 inventory buffer low in Surat', type: 'warning' },
   ],
-  generatedAt: '2 minutes ago',
+  generatedAt: '10 minutes ago',
 };
 
 export const recentActivity = [
-  { id: 1, type: 'order', message: 'New B2B contract with Arvind Textiles Pvt. Ltd.', amount: '₹24.5L', time: '5 min ago', status: 'success' },
-  { id: 2, type: 'alert', message: 'Inventory buffer low for SKU-8821 (Pune Hub)', amount: null, time: '18 min ago', status: 'warning' },
-  { id: 3, type: 'payment', message: 'Invoice payment received from NovaMart Retail', amount: '₹12.8L', time: '34 min ago', status: 'success' },
-  { id: 4, type: 'customer', message: 'New corporate account onboarded: Shreeji Foods', amount: null, time: '1 hr ago', status: 'info' },
-  { id: 5, type: 'report', message: 'GST & Monthly financial audit report generated', amount: null, time: '2 hr ago', status: 'info' },
-  { id: 6, type: 'alert', message: 'Working capital projections updated by AI', amount: null, time: '3 hr ago', status: 'info' },
+  { id: 1, type: 'order', message: 'New wholesale order confirmed by Arvind Textiles Pvt. Ltd.', amount: '₹4.8L', time: '12 min ago', status: 'success' },
+  { id: 2, type: 'alert', message: 'Stock buffer threshold reached for SKU-8821 (Surat Hub)', amount: null, time: '34 min ago', status: 'warning' },
+  { id: 3, type: 'payment', message: 'Invoice settlement received from NovaMart Retail Pvt. Ltd.', amount: '₹2.4L', time: '1 hr ago', status: 'success' },
+  { id: 4, type: 'customer', message: 'Corporate account agreement initiated: Shreeji Foods Pvt. Ltd.', amount: null, time: '2 hr ago', status: 'info' },
+  { id: 5, type: 'report', message: 'Monthly GST filing & P&L audit statement compiled', amount: null, time: '3 hr ago', status: 'info' },
+  { id: 6, type: 'alert', message: 'Dispatch schedule adjusted for BluePeak Logistics transit', amount: null, time: '4 hr ago', status: 'info' },
 ];

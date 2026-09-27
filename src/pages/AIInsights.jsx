@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { getAIInsights, getAIRecommendations, getBusinessHealthScores } from '../services/api';
 import Card from '../components/ui/Card';
+import Badge from '../components/ui/Badge';
 import AIResponseCard from '../components/ui/AIResponseCard';
-import { FiCheck, FiZap, FiActivity } from 'react-icons/fi';
 
 const AIInsights = () => {
   const [insights, setInsights] = useState([]);
@@ -16,11 +16,11 @@ const AIInsights = () => {
         const [insRes, recRes, healRes] = await Promise.all([
           getAIInsights(),
           getAIRecommendations(),
-          getBusinessHealthScores()
+          getBusinessHealthScores(),
         ]);
-        setInsights(insRes.data);
-        setRecs(recRes.data);
-        setHealthScores(healRes.data);
+        setInsights(insRes.data || []);
+        setRecs(recRes.data || []);
+        setHealthScores(healRes.data || []);
       } catch (err) {
         console.error('Error fetching AI insights', err);
       } finally {
@@ -32,48 +32,62 @@ const AIInsights = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-light-text-primary dark:text-dark-text-primary tracking-tight">AI Insights Portal</h1>
-        <p className="text-xs sm:text-sm text-light-text-muted dark:text-dark-text-muted mt-0.5">Autonomous forecasting, risk alerts, and operational health monitoring.</p>
+      {/* Ã¢"€Ã¢"€Ã¢"€ Header Ã¢"€Ã¢"€Ã¢"€ */}
+      <div className="page-header">
+        <div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="page-title">Decision Intelligence & Strategic Insights</h1>
+            <Badge variant="ai">Autonomous Analyst</Badge>
+          </div>
+          <p className="page-subtitle">
+            Explainable, high-confidence observations generated from live sales, inventory, and accounts ledgers.
+          </p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Insights List */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Ã¢"€Ã¢"€Ã¢"€ Left 2 Columns: Active Insights Stream Ã¢"€Ã¢"€Ã¢"€ */}
         <div className="lg:col-span-2 space-y-4">
-          <h2 className="text-sm font-bold text-light-text-primary dark:text-dark-text-primary flex items-center gap-2">
-            <FiZap className="text-primary w-4 h-4" />
-            Active Intelligence & Operational Alerts
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="section-title">Active Business Observations</h2>
+            <span className="text-xs text-light-text-muted dark:text-dark-text-muted">
+              {insights.length} validated findings
+            </span>
+          </div>
+
           {loading ? (
             Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="bg-light-card dark:bg-dark-card p-5 rounded-2xl h-44 shimmer" />
+              <div key={i} className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border p-5 rounded-xl h-48 shimmer" />
             ))
           ) : (
             insights.map((item) => (
               <AIResponseCard
                 key={item.id}
-                type={item.type}
-                title={item.title}
-                summary={item.summary}
+                headline={item.title}
+                whyChanged={item.summary}
+                recommendedAction={item.details?.[0] || 'Schedule internal review with department heads.'}
                 confidence={item.confidence}
-                impact={item.impact}
-                details={item.details}
-                actions={item.actions}
+                confidenceBasis={item.details?.join(' • ') || 'Multivariate regional dataset'}
+                sources="Sales Ledger + Inventory ERP"
+                category={item.type === 'risk' ? 'Risk Alert' : item.type === 'prediction' ? 'Forecast' : 'Opportunity'}
+                actionLabel={item.actions?.[0] || 'Take Action'}
               />
             ))
           )}
         </div>
 
-        {/* Sidebar: Action Priorities & Health Metrics */}
+        {/* Ã¢"€Ã¢"€Ã¢"€ Right Column: Recommended Actions & Business Health Ã¢"€Ã¢"€Ã¢"€ */}
         <div className="space-y-6">
-          {/* Action Priorities */}
-          <Card>
-            <h3 className="text-xs font-bold text-light-text-primary dark:text-dark-text-primary uppercase tracking-wider mb-4 flex items-center gap-2">
-              <FiCheck className="text-success w-4 h-4" />
-              AI Recommended Actions
-            </h3>
-            <div className="space-y-3.5">
+          {/* Prioritized Actions */}
+          <Card padding={true} className="space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-light-border dark:border-dark-border">
+              <h3 className="text-xs font-semibold text-light-text-primary dark:text-dark-text-primary uppercase tracking-wider">
+                Prioritized Actions
+              </h3>
+              <Badge variant="neutral">Next 14 Days</Badge>
+            </div>
+
+            <div className="space-y-3">
               {loading ? (
                 Array.from({ length: 4 }).map((_, i) => (
                   <div key={i} className="space-y-1">
@@ -83,19 +97,17 @@ const AIInsights = () => {
                 ))
               ) : (
                 recs.map((rec) => (
-                  <div key={rec.id} className="border-l-2 border-primary/40 pl-3 py-0.5 space-y-1">
-                    <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary leading-snug font-medium">{rec.text}</p>
-                    <div className="flex gap-2 items-center">
-                      <span className={`text-[9px] uppercase font-bold ${
-                        rec.priority === 'critical'
-                          ? 'text-danger'
-                          : rec.priority === 'high'
-                            ? 'text-warning'
-                            : 'text-light-text-muted dark:text-dark-text-muted'
+                  <div key={rec.id} className="p-2.5 rounded-lg bg-light-surface/60 dark:bg-dark-surface/60 border border-light-border dark:border-dark-border space-y-1">
+                    <p className="text-xs font-medium text-light-text-primary dark:text-dark-text-primary leading-snug">
+                      {rec.text}
+                    </p>
+                    <div className="flex items-center justify-between text-[10px] text-light-text-muted dark:text-dark-text-muted pt-1">
+                      <span className={`font-semibold uppercase tracking-wider ${
+                        rec.priority === 'critical' ? 'text-danger' : rec.priority === 'high' ? 'text-warning' : 'text-primary'
                       }`}>
                         {rec.priority} priority
                       </span>
-                      <span className="text-[9px] text-light-text-muted dark:text-dark-text-muted">• Impact: {rec.impact}</span>
+                      <span>Impact: {rec.impact}</span>
                     </div>
                   </div>
                 ))
@@ -103,16 +115,19 @@ const AIInsights = () => {
             </div>
           </Card>
 
-          {/* Health Index Breakdown */}
-          <Card>
-            <h3 className="text-xs font-bold text-light-text-primary dark:text-dark-text-primary uppercase tracking-wider mb-4 flex items-center gap-2">
-              <FiActivity className="text-primary w-4 h-4" />
-              Health Score Breakdown
-            </h3>
-            <div className="space-y-3">
+          {/* Business Health Dimensions */}
+          <Card padding={true} className="space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-light-border dark:border-dark-border">
+              <h3 className="text-xs font-semibold text-light-text-primary dark:text-dark-text-primary uppercase tracking-wider">
+                Health Dimensions (82/100)
+              </h3>
+              <Badge variant="success">Grade A</Badge>
+            </div>
+
+            <div className="space-y-2.5">
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="flex justify-between items-center">
+                  <div key={i} className="flex justify-between items-center py-1">
                     <div className="h-3 rounded shimmer w-2/3" />
                     <div className="h-3 rounded shimmer w-1/12" />
                   </div>
@@ -120,13 +135,13 @@ const AIInsights = () => {
               ) : (
                 healthScores.map((h, i) => (
                   <div key={i} className="space-y-1">
-                    <div className="flex justify-between text-xs font-medium">
-                      <span className="text-light-text-secondary dark:text-dark-text-secondary">{h.category}</span>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-light-text-secondary dark:text-dark-text-secondary font-medium">{h.category}</span>
                       <span className="font-semibold text-light-text-primary dark:text-dark-text-primary">{h.score}%</span>
                     </div>
-                    <div className="w-full bg-light-border dark:bg-dark-border rounded-full h-1.5 overflow-hidden">
+                    <div className="w-full bg-light-border dark:bg-dark-border rounded-full h-1 overflow-hidden">
                       <div
-                        className="h-1.5 rounded-full bg-primary transition-all duration-300"
+                        className="h-1 rounded-full bg-primary"
                         style={{ width: `${h.score}%` }}
                       />
                     </div>

@@ -3,23 +3,42 @@ import { useNavigate, Link } from 'react-router-dom';
 import { FiMail, FiLock, FiUser, FiBriefcase } from 'react-icons/fi';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
+import { useAuth } from '../../context/AuthContext';
 
 const Signup = () => {
   const navigate = useNavigate();
-  const [fullName, setFullName] = useState('');
-  const [companyName, setCompanyName] = useState('');
+  const { register } = useAuth();
+  const [fullName, setFullName]         = useState('');
+  const [companyName, setCompanyName]   = useState('');
   const [businessType, setBusinessType] = useState('manufacturing');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [email, setEmail]               = useState('');
+  const [password, setPassword]         = useState('');
+  const [loading, setLoading]           = useState(false);
+  const [error, setError]               = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    setError('');
+    try {
+      await register({
+        name:         fullName,
+        email,
+        password,
+        company_name: companyName,
+        industry:     businessType,
+      });
       navigate('/dashboard');
-    }, 700);
+    } catch (err) {
+      const detail = err?.response?.data?.detail;
+      setError(
+        typeof detail === 'string' ? detail
+          : Array.isArray(detail)  ? detail.map(d => d.msg).join('; ')
+          : 'Registration failed. Please check your details and try again.'
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

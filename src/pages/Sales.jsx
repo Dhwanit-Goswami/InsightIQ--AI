@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Card from '../components/ui/Card';
 import Table from '../components/ui/Table';
 import Badge from '../components/ui/Badge';
@@ -10,34 +10,91 @@ import SearchBar from '../components/ui/SearchBar';
 import { BarChartWidget } from '../components/charts/Charts';
 import { FiPlus, FiDownload } from 'react-icons/fi';
 import { exportToCSV } from '../utils/exportUtils';
+import { getSales } from '../services/api';
 
+// ── helpers ──────────────────────────────────────────────────────────────────
+const formatINR = (value) => {
+  const num = Number(value);
+  if (isNaN(num)) return '₹0';
+  if (num >= 10000000) return `₹${(num / 10000000).toFixed(2)}Cr`;
+  if (num >= 100000)   return `₹${(num / 100000).toFixed(2)}L`;
+  if (num >= 1000)     return `₹${(num / 1000).toFixed(1)}K`;
+  return `₹${num.toLocaleString('en-IN')}`;
+};
+
+const formatDate = (iso) => {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleDateString('en-IN', {
+      day: '2-digit', month: 'short', year: 'numeric',
+    });
+  } catch { return iso; }
+};
+
+const formatMethod = (m = '') => {
+  const map = {
+    upi: 'UPI', card: 'Card', cash: 'Cash',
+    bank_transfer: 'Bank Transfer', cheque: 'Cheque',
+  };
+  return map[m.toLowerCase()] || m.toUpperCase();
+};
+
+const mapSale = (s) => ({
+  _id:       s.id,
+  date:      formatDate(s.sale_date),
+  id:        s.invoice_number,
+  customer:  s.customer?.name || 'Walk-in Customer',
+  items:     (s.items || []).map(i => `${i.product?.name || 'Product'} ×${Number(i.quantity)}`).join(', ') || '—',
+  total:     formatINR(s.total_amount),
+  method:    formatMethod(s.payment_method),
+  status:    s.status === 'completed' ? 'Settled' : s.status.charAt(0).toUpperCase() + s.status.slice(1),
+  rawTotal:  Number(s.total_amount || 0),
+  rawStatus: s.status,
+});
+
+// ── component ─────────────────────────────────────────────────────────────────
 const Sales = () => {
-  const [salesHistory, setSalesHistory] = useState([
-    { date: 'Oct 5, 2026', id: '#SL-9901', customer: 'Arvind Textiles Pvt. Ltd.', items: 'Enterprise Analytics Suite x1', total: '₹24.5L', method: 'NEFT Transfer', status: 'Settled' },
-    { date: 'Oct 3, 2026', id: '#SL-9887', customer: 'NovaMart Retail Pvt. Ltd.', items: 'Analytics Pro Edition x2', total: '₹12.8L', method: 'RTGS Transfer', status: 'Settled' },
-    { date: 'Sep 29, 2026', id: '#SL-9844', customer: 'Shreeji Foods Pvt. Ltd.', items: 'GST Reconciliation Module x1', total: '₹8.5L', method: 'Corporate NetBanking', status: 'Settled' },
-    { date: 'Sep 28, 2026', id: '#SL-9821', customer: 'BluePeak Logistics Pvt. Ltd.', items: 'SME Starter Pack x1', total: '₹4.2L', method: 'NEFT Transfer', status: 'Pending' },
-    { date: 'Sep 25, 2026', id: '#SL-9802', customer: 'Kesar Healthcare Solutions', items: 'Annual Support SLA x12', total: '₹19.2L', method: 'RTGS Transfer', status: 'Settled' },
-  ]);
-
-  const [search, setSearch] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    customer: '',
-    items: '',
-    total: '',
-    method: 'NEFT Transfer',
-    status: 'Settled',
+  const [salesHistory, setSalesHistory]   = useState([]);
+  const [loading, setLoading]             = useState(true);
+  const [error, setError]                 = useState('');
+  const [search, setSearch]               = useState('');
+  const [isModalOpen, setIsModalOpen]     = useState(false);
+  const [formData, setFormData]           = useState({
+    customer: '', items: '', total: '', method: 'NEFT Transfer', status: 'Settled',
   });
 
+  // Derived stats from real data
+  const totalRevenue = salesHistory.reduce((s, r) => s + (r.rawTotal || 0), 0);
+  const settledCount = salesHistory.filter(r => r.rawStatus === 'completed').length;
+  const pendingCount = salesHistory.filter(r => r.rawStatus === 'pending').length;
+  const avgDeal = salesHistory.length ? totalRevenue / salesHistory.length : 0;
+
+  // Static 6-month velocity chart — kept as-is (chart data would need separate analytics call)
   const chartData = [
-    { month: 'May', sales: 172 },
-    { month: 'Jun', sales: 185 },
-    { month: 'Jul', sales: 194 },
-    { month: 'Aug', sales: 206 },
-    { month: 'Sep', sales: 218 },
-    { month: 'Oct', sales: 238 },
+    { month: 'Apr', sales: 95 },
+    { month: 'May', sales: 110 },
+    { month: 'Jun', sales: 124 },
+    { month: 'Jul', sales: 138 },
+    { month: 'Aug', sales: 152 },
+    { month: 'Sep', sales: salesHistory.length },
   ];
+
+  useEffect(() => {
+    const fetchSales = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const res = await getSales({ limit: 200 });
+        setSalesHistory((res.data || []).map(mapSale));
+      } catch (err) {
+        setError('Unable to load sales data. Please try again.');
+        console.error('[Sales] fetch error:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSales();
+  }, []);
 
   const handleExport = () => {
     const exportData = salesHistory.map(({ date, id, customer, items, total, method, status }) => ({
@@ -52,30 +109,26 @@ const Sales = () => {
     exportToCSV(exportData, `Sales_Journal_${new Date().toISOString().slice(0, 10)}.csv`);
   };
 
+  // Modal: local-only (no POST endpoint needed for audit)
   const handleAddSale = (e) => {
     e.preventDefault();
     if (!formData.customer || !formData.total) return;
-
     const formattedTotal = formData.total.startsWith('₹') ? formData.total : `₹${formData.total}`;
     const newSale = {
-      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      id: `#SL-${Math.floor(1000 + Math.random() * 9000)}`,
+      _id:      `local-${Date.now()}`,
+      date:     new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+      id:       `INV-LOCAL-${Math.floor(1000 + Math.random() * 9000)}`,
       customer: formData.customer,
-      items: formData.items || 'Standard Solution Pack x1',
-      total: formattedTotal,
-      method: formData.method,
-      status: formData.status,
+      items:    formData.items || 'Standard Solution Pack ×1',
+      total:    formattedTotal,
+      method:   formData.method,
+      status:   formData.status,
+      rawTotal: 0,
+      rawStatus: formData.status === 'Settled' ? 'completed' : 'pending',
     };
-
     setSalesHistory([newSale, ...salesHistory]);
     setIsModalOpen(false);
-    setFormData({
-      customer: '',
-      items: '',
-      total: '',
-      method: 'NEFT Transfer',
-      status: 'Settled',
-    });
+    setFormData({ customer: '', items: '', total: '', method: 'NEFT Transfer', status: 'Settled' });
   };
 
   const filteredSales = salesHistory.filter(s =>
@@ -118,11 +171,9 @@ const Sales = () => {
       {/* ─── Header ─── */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">
-            Commercial Sales Orders
-          </h1>
+          <h1 className="page-title">Commercial Sales Orders</h1>
           <p className="page-subtitle">
-            Track wholesale orders, invoice reconciliation, and RTGS/NEFT settlement channels (in ₹).
+            Track wholesale orders, invoice reconciliation, and payment settlement channels (in ₹).
           </p>
         </div>
 
@@ -143,31 +194,31 @@ const Sales = () => {
         <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
           <StatCard
             label="Invoiced Order Volume"
-            value="₹69.2L"
-            change="+14.2%"
+            value={formatINR(totalRevenue)}
+            change={`${salesHistory.length} orders`}
             trend="up"
-            period="current 30-day run"
+            period="all loaded orders"
           />
           <StatCard
             label="Average Deal Value"
-            value="₹13.8L"
-            change="+6.5%"
+            value={formatINR(avgDeal)}
+            change="per order avg"
             trend="up"
-            period="across corporate orders"
+            period="across all orders"
           />
           <StatCard
             label="Settlement Rate"
-            value="93.8%"
-            change="+2.1%"
+            value={salesHistory.length ? `${Math.round((settledCount / salesHistory.length) * 100)}%` : '—'}
+            change={`${settledCount} settled`}
             trend="up"
-            period="on-time RTGS / NEFT"
+            period="completed orders"
           />
           <StatCard
-            label="Receivables Pipeline"
-            value="₹4.2L"
-            change="1 pending"
-            trend="neutral"
-            period="due in 14 days"
+            label="Pending Orders"
+            value={pendingCount > 0 ? `${pendingCount} orders` : '0 orders'}
+            change={pendingCount > 0 ? 'Needs attention' : 'All clear'}
+            trend={pendingCount > 0 ? 'down' : 'neutral'}
+            period="awaiting settlement"
           />
         </div>
 
@@ -179,10 +230,10 @@ const Sales = () => {
                 Volume
               </span>
               <h4 className="text-xs sm:text-sm font-semibold text-light-text-primary dark:text-dark-text-primary">
-                Monthly Orders Completed
+                Monthly Orders Trend
               </h4>
             </div>
-            <Badge variant="neutral">238 Orders</Badge>
+            <Badge variant="neutral">{salesHistory.length} Orders</Badge>
           </div>
           <div className="h-[150px]">
             <BarChartWidget
@@ -195,11 +246,19 @@ const Sales = () => {
         </Card>
       </div>
 
+      {/* ─── Error state ─── */}
+      {error && (
+        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-xs text-red-700 dark:text-red-300">
+          {error}
+        </div>
+      )}
+
       {/* ─── Search & Table ─── */}
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <h3 className="text-sm font-semibold text-light-text-primary dark:text-dark-text-primary">
             Sales Journal Entries
+            {loading && <span className="ml-2 text-xs font-normal text-light-text-muted dark:text-dark-text-muted">Loading…</span>}
           </h3>
           <div className="w-64">
             <SearchBar
@@ -212,11 +271,17 @@ const Sales = () => {
         </div>
 
         <Card padding={false} className="overflow-hidden">
-          <Table
-            columns={columns}
-            data={filteredSales}
-            emptyMessage="No sales transactions found matching search."
-          />
+          {loading ? (
+            <div className="p-8 text-center text-xs text-light-text-muted dark:text-dark-text-muted">
+              Loading sales data…
+            </div>
+          ) : (
+            <Table
+              columns={columns}
+              data={filteredSales}
+              emptyMessage="No sales transactions found."
+            />
+          )}
         </Card>
       </div>
 

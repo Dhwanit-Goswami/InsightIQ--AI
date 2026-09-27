@@ -1,7 +1,8 @@
 import React, { lazy, Suspense } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import AppLayout from '../layouts/AppLayout';
 import { PageLoader } from '../components/ui/Loader';
+import { useAuth } from '../context/AuthContext';
 
 // Lazy load all pages
 const Landing = lazy(() => import('../pages/Landing'));
@@ -22,7 +23,14 @@ const Profile = lazy(() => import('../pages/Profile'));
 const Settings = lazy(() => import('../pages/Settings'));
 
 const ProtectedRoute = ({ children }) => {
-  // In production, check auth state here
+  const { isAuthenticated } = useAuth();
+  const location = useLocation();
+
+  if (!isAuthenticated) {
+    // Redirect to login, but remember where the user was trying to go
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
   return <AppLayout>{children}</AppLayout>;
 };
 

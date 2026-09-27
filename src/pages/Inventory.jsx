@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Card from '../components/ui/Card';
 import Table from '../components/ui/Table';
 import Badge from '../components/ui/Badge';
@@ -10,40 +10,94 @@ import SearchBar from '../components/ui/SearchBar';
 import { DonutChartWidget } from '../components/charts/Charts';
 import { FiPlus, FiDownload } from 'react-icons/fi';
 import { exportToCSV } from '../utils/exportUtils';
+import { getInventory } from '../services/api';
 
+// ── helpers ───────────────────────────────────────────────────────────────────
+const formatINR = (value) => {
+  const num = Number(value);
+  if (isNaN(num)) return '₹0';
+  if (num >= 10000000) return `₹${(num / 10000000).toFixed(2)}Cr`;
+  if (num >= 100000)   return `₹${(num / 100000).toFixed(2)}L`;
+  if (num >= 1000)     return `₹${(num / 1000).toFixed(1)}K`;
+  return `₹${num.toLocaleString('en-IN')}`;
+};
+
+const mapInventoryItem = (item) => {
+  const qty = Number(item.quantity || 0);
+  const reorder = Number(item.reorder_level || 10);
+  const isLow = qty <= reorder;
+  return {
+    _id:      item.id,
+    sku:      item.product?.sku || '—',
+    name:     item.product?.name || '—',
+    category: item.product?.category || 'General',
+    stock:    qty,
+    price:    formatINR(item.product?.selling_price || 0),
+    status:   isLow ? 'Low Stock' : 'In Stock',
+    reorder,
+    location: item.warehouse_location || '—',
+    rawPrice: Number(item.product?.selling_price || 0),
+  };
+};
+
+// Build donut chart distribution from real inventory data
+const buildDistribution = (items) => {
+  const COLORS = ['#5278A6', '#5A8065', '#8178A2', '#B07040', '#A65278', '#408065'];
+  const catMap = {};
+  items.forEach(item => {
+    catMap[item.category] = (catMap[item.category] || 0) + 1;
+  });
+  return Object.entries(catMap).map(([name, count], i) => ({
+    name,
+    value: Math.round((count / items.length) * 100),
+    color: COLORS[i % COLORS.length],
+  }));
+};
+
+// ── component ──────────────────────────────────────────────────────────────────
 const Inventory = () => {
-  const [stockItems, setStockItems] = useState([
-    { sku: 'SKU-8821', name: 'Enterprise Analytics Dedicated Instance', category: 'Software Assets', stock: 12, price: '₹4,20,000', status: 'Low Stock' },
-    { sku: 'SKU-4532', name: 'Vardaan Gateway Edge Node', category: 'Hardware Nodes', stock: 45, price: '₹12,000', status: 'In Stock' },
-    { sku: 'SKU-9901', name: 'Database Mirroring Appliance v3', category: 'Hardware Nodes', stock: 8, price: '₹85,000', status: 'Low Stock' },
-    { sku: 'SKU-1024', name: 'Developer REST API Token Pack', category: 'Virtual Assets', stock: 840, price: '₹900', status: 'In Stock' },
-    { sku: 'SKU-2048', name: 'Copilot AI Vector Query Tokens', category: 'Virtual Assets', stock: 1420, price: '₹400', status: 'In Stock' },
-  ]);
-
-  const [search, setSearch] = useState('');
+  const [stockItems, setStockItems]   = useState([]);
+  const [loading, setLoading]         = useState(true);
+  const [error, setError]             = useState('');
+  const [search, setSearch]           = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    category: 'Software Assets',
-    stock: '',
-    price: '',
-    status: 'In Stock',
+  const [formData, setFormData]       = useState({
+    name: '', category: 'POS Hardware', stock: '', price: '', status: 'In Stock',
   });
 
-  const distribution = [
-    { name: 'Virtual Assets', value: 55, color: '#5278A6' },
-    { name: 'Software Assets', value: 30, color: '#5A8065' },
-    { name: 'Hardware Nodes', value: 15, color: '#8178A2' },
+  // Computed stats
+  const lowStockItems  = stockItems.filter(i => i.status === 'Low Stock');
+  const totalValuation = stockItems.reduce((s, i) => s + i.rawPrice * i.stock, 0);
+  const distribution   = stockItems.length ? buildDistribution(stockItems) : [
+    { name: 'No Data', value: 100, color: '#94a3b8' },
   ];
 
+  useEffect(() => {
+    const fetchInventory = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const res = await getInventory();
+        setStockItems((res.data || []).map(mapInventoryItem));
+      } catch (err) {
+        setError('Unable to load inventory data. Please try again.');
+        console.error('[Inventory] fetch error:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchInventory();
+  }, []);
+
   const handleExport = () => {
-    const exportData = stockItems.map(({ sku, name, category, stock, price, status }) => ({
+    const exportData = stockItems.map(({ sku, name, category, stock, price, status, location }) => ({
       'SKU Code': sku,
       'Resource Item': name,
       'Category': category,
-      'Stock Quantity': stock,
+      'Quantity Available': stock,
       'Unit Rate': price,
       'Status': status,
+      'Location': location,
     }));
     exportToCSV(exportData, `Asset_Inventory_${new Date().toISOString().slice(0, 10)}.csv`);
   };
@@ -51,26 +105,23 @@ const Inventory = () => {
   const handleAddItem = (e) => {
     e.preventDefault();
     if (!formData.name || !formData.price) return;
-
     const formattedPrice = formData.price.startsWith('₹') ? formData.price : `₹${formData.price}`;
+    const qty = parseInt(formData.stock, 10) || 1;
     const newItem = {
-      sku: `SKU-${Math.floor(1000 + Math.random() * 9000)}`,
-      name: formData.name,
+      _id:      `local-${Date.now()}`,
+      sku:      `SKU-${Math.floor(1000 + Math.random() * 9000)}`,
+      name:     formData.name,
       category: formData.category,
-      stock: parseInt(formData.stock, 10) || 1,
-      price: formattedPrice,
-      status: formData.status,
+      stock:    qty,
+      price:    formattedPrice,
+      status:   formData.status,
+      reorder:  10,
+      location: 'Main Hub',
+      rawPrice: 0,
     };
-
     setStockItems([newItem, ...stockItems]);
     setIsModalOpen(false);
-    setFormData({
-      name: '',
-      category: 'Software Assets',
-      stock: '',
-      price: '',
-      status: 'In Stock',
-    });
+    setFormData({ name: '', category: 'POS Hardware', stock: '', price: '', status: 'In Stock' });
   };
 
   const filteredItems = stockItems.filter(item =>
@@ -92,7 +143,7 @@ const Inventory = () => {
       key: 'stock',
       label: 'Quantity Available',
       sortable: true,
-      render: (q) => <span className="font-semibold text-light-text-primary dark:text-dark-text-primary">{q.toLocaleString('en-IN')}</span>,
+      render: (q) => <span className="font-semibold text-light-text-primary dark:text-dark-text-primary">{Number(q).toLocaleString('en-IN')}</span>,
     },
     { key: 'price', label: 'Unit Rate (₹)', sortable: true },
     {
@@ -112,11 +163,9 @@ const Inventory = () => {
       {/* ─── Header ─── */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">
-            Inventory & Asset Management
-          </h1>
+          <h1 className="page-title">Inventory &amp; Asset Management</h1>
           <p className="page-subtitle">
-            Monitor stock thresholds, hardware node balances, and software license availability.
+            Monitor stock thresholds, product quantities, and low-stock alerts.
           </p>
         </div>
 
@@ -137,31 +186,31 @@ const Inventory = () => {
         <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
           <StatCard
             label="Total Tracked SKUs"
-            value={`${stockItems.length} Products`}
+            value={loading ? '—' : `${stockItems.length} Products`}
             change="All active"
             trend="neutral"
-            period="across 3 asset categories"
+            period="across all categories"
           />
           <StatCard
             label="Stock Valuation"
-            value="₹78.4L"
-            change="+4.2%"
+            value={loading ? '—' : formatINR(totalValuation)}
+            change="current book value"
             trend="up"
-            period="current book value"
+            period="quantity × unit price"
           />
           <StatCard
             label="Low Buffer Thresholds"
-            value="2 SKUs"
-            change="Action needed"
-            trend="down"
-            period="Surat & Pune warehouses"
+            value={loading ? '—' : `${lowStockItems.length} SKUs`}
+            change={lowStockItems.length > 0 ? 'Action needed' : 'All levels OK'}
+            trend={lowStockItems.length > 0 ? 'down' : 'up'}
+            period="at or below reorder level"
           />
           <StatCard
-            label="Average Turnover Days"
-            value="38 Days"
-            change="-4 days"
-            trend="up"
-            period="DSI benchmark: 45 days"
+            label="Categories Tracked"
+            value={loading ? '—' : `${new Set(stockItems.map(i => i.category)).size} types`}
+            change="product categories"
+            trend="neutral"
+            period="across inventory"
           />
         </div>
 
@@ -176,24 +225,32 @@ const Inventory = () => {
                 Asset Allocation
               </h4>
             </div>
-            <Badge variant="neutral">3 Tiers</Badge>
+            <Badge variant="neutral">{new Set(stockItems.map(i => i.category)).size} Tiers</Badge>
           </div>
           <div className="h-[150px]">
             <DonutChartWidget
               data={distribution}
               centerLabel="Active Inventory"
-              centerValue="₹78.4L"
+              centerValue={loading ? '…' : formatINR(totalValuation)}
               height={150}
             />
           </div>
         </Card>
       </div>
 
+      {/* ─── Error state ─── */}
+      {error && (
+        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-xs text-red-700 dark:text-red-300">
+          {error}
+        </div>
+      )}
+
       {/* ─── Search & Table ─── */}
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <h3 className="text-sm font-semibold text-light-text-primary dark:text-dark-text-primary">
-            SKU Registry & Stock Levels
+            SKU Registry &amp; Stock Levels
+            {loading && <span className="ml-2 text-xs font-normal text-light-text-muted dark:text-dark-text-muted">Loading…</span>}
           </h3>
           <div className="w-64">
             <SearchBar
@@ -206,11 +263,17 @@ const Inventory = () => {
         </div>
 
         <Card padding={false} className="overflow-hidden">
-          <Table
-            columns={columns}
-            data={filteredItems}
-            emptyMessage="No inventory assets match your search."
-          />
+          {loading ? (
+            <div className="p-8 text-center text-xs text-light-text-muted dark:text-dark-text-muted">
+              Loading inventory data…
+            </div>
+          ) : (
+            <Table
+              columns={columns}
+              data={filteredItems}
+              emptyMessage="No inventory items found."
+            />
+          )}
         </Card>
       </div>
 
@@ -219,7 +282,7 @@ const Inventory = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title="Add Inventory Resource Item"
-        subtitle="Register a new software license, virtual token, or hardware node."
+        subtitle="Register a new product or asset in the inventory."
         size="md"
       >
         <form onSubmit={handleAddItem} className="space-y-4">
@@ -241,9 +304,12 @@ const Inventory = () => {
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                 className="input-field py-1.5 text-xs font-medium cursor-pointer"
               >
-                <option value="Software Assets">Software Assets</option>
-                <option value="Hardware Nodes">Hardware Nodes</option>
-                <option value="Virtual Assets">Virtual Assets</option>
+                <option value="POS Hardware">POS Hardware</option>
+                <option value="Networking &amp; IT">Networking &amp; IT</option>
+                <option value="Packaging &amp; Supplies">Packaging &amp; Supplies</option>
+                <option value="Retail Display">Retail Display</option>
+                <option value="Security &amp; Vault">Security &amp; Vault</option>
+                <option value="Office Equipment">Office Equipment</option>
               </select>
             </div>
 

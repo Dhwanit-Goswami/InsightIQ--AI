@@ -9,11 +9,16 @@ import { userData, mockCustomers } from '../data/mockUser';
 // ─── Axios Instance ───────────────────────────────────
 const api = axios.create({
   baseURL: '/api/v1',
-  timeout: 5000,
+  timeout: 8000,
   headers: { 'Content-Type': 'application/json' },
 });
 
+// Attach JWT token if present
 api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('insightiq_token');
+  if (token) {
+    config.headers['Authorization'] = `Bearer ${token}`;
+  }
   config.metadata = { startTime: Date.now() };
   return config;
 });
@@ -21,18 +26,114 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.warn('API Error (using mock fallback):', error.message);
+    if (error.response?.status === 401) {
+      localStorage.removeItem('insightiq_token');
+      localStorage.removeItem('insightiq_user');
+    }
     return Promise.reject(error);
   }
 );
 
-// ─── Simulate network latency ─────────────────────────
+// ─── Helpers ──────────────────────────────────────────
 const delay = (ms = 350) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const withFallback = async (apiFn, fallback) => {
+  try {
+    const result = await apiFn();
+    return result;
+  } catch (err) {
+    console.warn('[InsightIQ] API unavailable, using mock data:', err.message);
+    return { data: typeof fallback === 'function' ? fallback() : fallback };
+  }
+};
+
+// ─── Format helpers ───────────────────────────────────
+const formatINR = (value) => {
+  if (value === null || value === undefined) return '₹0';
+  const num = Number(value);
+  if (num >= 10000000) return `₹${(num / 10000000).toFixed(1)}Cr`;
+  if (num >= 100000)   return `₹${(num / 100000).toFixed(1)}L`;
+  if (num >= 1000)     return `₹${(num / 1000).toFixed(1)}K`;
+  return `₹${num.toFixed(0)}`;
+};
+
+const formatKPI = (overview) => {
+  if (!overview || !overview.kpis) return kpiData;
+  const { kpis } = overview;
+  const rev    = kpis.revenue    || {};
+  const exp    = kpis.expenses   || {};
+  const profit = kpis.net_profit || {};
+  return {
+    revenue: {
+      value:  rev.formatted_value    || formatINR(rev.value)    || kpiData.revenue.value,
+      change: rev.change_pct != null ? `${rev.change_pct > 0 ? '+' : ''}${rev.change_pct.toFixed(1)}%` : kpiData.revenue.change,
+      trend:  rev.trend              || kpiData.revenue.trend,
+      label:  'Revenue',
+      period: 'vs last 30 days',
+    },
+    profit: {
+      value:  profit.formatted_value || formatINR(profit.value) || kpiData.profit.value,
+      change: profit.change_pct != null ? `${profit.change_pct > 0 ? '+' : ''}${profit.change_pct.toFixed(1)}%` : kpiData.profit.change,
+      trend:  profit.trend           || kpiData.profit.trend,
+      label:  'Net Profit',
+      period: 'vs last 30 days',
+    },
+    expenses: {
+      value:  exp.formatted_value    || formatINR(exp.value)    || kpiData.expenses.value,
+      change: exp.change_pct != null ? `${exp.change_pct > 0 ? '+' : ''}${exp.change_pct.toFixed(1)}%` : kpiData.expenses.change,
+      trend:  exp.trend              || kpiData.expenses.trend,
+      label:  'Expenses',
+      period: 'vs last 30 days',
+    },
+    businessHealth: kpiData.businessHealth,
+    customers:      kpiData.customers,
+    orders: {
+      value:  String(kpis.orders?.value ?? kpiData.orders.value),
+      change: kpiData.orders.change,
+      trend:  kpiData.orders.trend,
+      label:  'Orders',
+      period: 'this period',
+    },
+    inventory: kpiData.inventory,
+  };
+};
+
+const formatMonthlyTrend = (trend) => {
+  if (!trend || !trend.length) return monthlyRevenue;
+  return trend.map(d => ({
+    month:    d.month || d.period || '',
+    revenue:  d.revenue  || 0,
+    profit:   d.profit   || 0,
+    expenses: d.expenses || 0,
+  }));
+};
+
+const formatExpenseBreakdown = (breakdown) => {
+  if (!breakdown || !breakdown.length) return expenseBreakdown;
+  const colors = ['#5278A6', '#5A8065', '#B07040', '#7A5EA6', '#A65278', '#408065'];
+  return breakdown.slice(0, 6).map((b, i) => ({
+    name:  b.category || b.name || `Category ${i+1}`,
+    value: Number(b.amount || b.total || 0),
+    color: colors[i % colors.length],
+  }));
+};
+
+// ─── Auth ─────────────────────────────────────────────
+export const loginUser = async (email, password) => {
+  return api.post('/auth/login', { email, password });
+};
+
+export const getAuthMe = async () => {
+  return api.get('/auth/me');
+};
 
 // ─── Dashboard ────────────────────────────────────────
 export const getDashboardKPIs = async () => {
-  await delay(250);
-  return { data: kpiData };
+  return withFallback(async () => {
+    const res = await api.get('/dashboard/overview');
+    const formatted = formatKPI(res.data);
+    return { data: formatted };
+  }, kpiData);
 };
 
 export const getAISummary = async () => {
@@ -41,13 +142,41 @@ export const getAISummary = async () => {
 };
 
 export const getAIPrimaryInsight = async () => {
-  await delay(200);
-  return { data: aiPrimaryInsight };
+  return withFallback(async () => {
+    // Use first insight from AI engine as the primary insight card
+    const res = await api.get('/insights');
+    const ins = res.data?.[0];
+    if (!ins) return { data: aiPrimaryInsight };
+    return {
+      data: {
+        headline:          ins.title,
+        whyChanged:        ins.description,
+        recommendedAction: ins.recommendations?.[0]?.action || 'Review this insight in the AI section.',
+        confidence:        Math.round((ins.confidence_score || 0.85) * 100),
+        confidenceBasis:   'Real-time transactional data analysis',
+        sources:           `${ins.category} data`,
+        category:          ins.category,
+      }
+    };
+  }, aiPrimaryInsight);
 };
 
 export const getRecentActivity = async () => {
-  await delay(200);
-  return { data: recentActivity };
+  return withFallback(async () => {
+    // Use recent sales as activity
+    const res = await api.get('/sales?limit=6');
+    const items = res.data?.items || res.data || [];
+    if (!items.length) return { data: recentActivity };
+    const formatted = items.map((s, i) => ({
+      id:      s.id || i,
+      type:    'order',
+      message: `Sale to ${s.customer_name || s.customer_id || 'Customer'} — ${s.product_name || 'Product'}`,
+      amount:  formatINR(s.total_amount),
+      time:    s.sale_date ? new Date(s.sale_date).toLocaleDateString('en-IN') : 'Recent',
+      status:  s.payment_status === 'paid' ? 'success' : s.payment_status === 'pending' ? 'warning' : 'info',
+    }));
+    return { data: formatted };
+  }, recentActivity);
 };
 
 export const getQuickActions = async () => {
@@ -57,13 +186,19 @@ export const getQuickActions = async () => {
 
 // ─── Analytics ───────────────────────────────────────
 export const getMonthlyRevenue = async () => {
-  await delay(300);
-  return { data: monthlyRevenue };
+  return withFallback(async () => {
+    const res = await api.get('/dashboard/overview');
+    const trend = res.data?.monthly_trend || [];
+    return { data: formatMonthlyTrend(trend) };
+  }, monthlyRevenue);
 };
 
 export const getExpenseBreakdown = async () => {
-  await delay(250);
-  return { data: expenseBreakdown };
+  return withFallback(async () => {
+    const res = await api.get('/dashboard/overview');
+    const breakdown = res.data?.expense_breakdown || [];
+    return { data: formatExpenseBreakdown(breakdown) };
+  }, expenseBreakdown);
 };
 
 export const getCustomerGrowth = async () => {
@@ -87,19 +222,53 @@ export const getSalesByChannel = async () => {
 };
 
 export const getTopProducts = async () => {
-  await delay(250);
-  return { data: topProducts };
+  return withFallback(async () => {
+    const res = await api.get('/analytics/products');
+    const products = res.data?.top_products || [];
+    if (!products.length) return { data: topProducts };
+    return { data: products.slice(0, 6).map(p => ({
+      name:    p.name,
+      revenue: Number(p.total_revenue || 0),
+      units:   Number(p.units_sold || 0),
+    })) };
+  }, topProducts);
 };
 
 // ─── AI Intelligence ─────────────────────────────────
 export const getAIInsights = async () => {
-  await delay(350);
-  return { data: aiInsights };
+  return withFallback(async () => {
+    // First try to generate fresh ones, then fetch
+    try { await api.post('/insights/generate'); } catch (_) {}
+    const res = await api.get('/insights');
+    const items = Array.isArray(res.data) ? res.data : [];
+    if (!items.length) return { data: aiInsights };
+    return {
+      data: items.map(ins => ({
+        id:          ins.id,
+        title:       ins.title,
+        description: ins.description,
+        category:    ins.category,
+        severity:    ins.severity || 'medium',
+        confidence:  Math.round((ins.confidence_score || 0.85) * 100),
+        is_read:     ins.is_read || false,
+        recommendations: (ins.recommendations || []).map(r => ({
+          action:   r.action,
+          priority: r.priority || 'medium',
+          status:   r.status   || 'pending',
+        })),
+        created_at: ins.created_at,
+      }))
+    };
+  }, aiInsights);
 };
 
 export const getAIRecommendations = async () => {
-  await delay(300);
-  return { data: aiRecommendations };
+  return withFallback(async () => {
+    const res = await api.get('/insights/recommendations/all');
+    const items = Array.isArray(res.data) ? res.data : [];
+    if (!items.length) return { data: aiRecommendations };
+    return { data: items };
+  }, aiRecommendations);
 };
 
 export const getBusinessHealthScores = async () => {
@@ -117,7 +286,7 @@ export const getSuggestedPrompts = async () => {
   return { data: suggestedPrompts };
 };
 
-// Section 19: Professional Business Analyst Structured Response
+// ─── AI Chat (deterministic structured response) ─────
 export const sendAIMessage = async (message) => {
   await delay(900);
   const q = message.toLowerCase();
@@ -189,33 +358,84 @@ export const sendAIMessage = async (message) => {
 
 // ─── Reports ─────────────────────────────────────────
 export const getReports = async (filters = {}) => {
-  await delay(250);
-  let filtered = [...allReports];
-  if (filters.type && filters.type !== 'All') {
-    filtered = filtered.filter(r => r.type === filters.type);
-  }
-  if (filters.search) {
-    filtered = filtered.filter(r => r.name.toLowerCase().includes(filters.search.toLowerCase()));
-  }
-  return { data: filtered };
+  return withFallback(async () => {
+    const res = await api.get('/reports');
+    let items = Array.isArray(res.data?.items) ? res.data.items : (Array.isArray(res.data) ? res.data : []);
+    if (!items.length) return { data: allReports };
+    if (filters.type && filters.type !== 'All') {
+      items = items.filter(r => r.report_type === filters.type || r.type === filters.type);
+    }
+    if (filters.search) {
+      items = items.filter(r => (r.name || r.title || '').toLowerCase().includes(filters.search.toLowerCase()));
+    }
+    return { data: items };
+  }, () => {
+    let filtered = [...allReports];
+    if (filters.type && filters.type !== 'All') filtered = filtered.filter(r => r.type === filters.type);
+    if (filters.search) filtered = filtered.filter(r => r.name.toLowerCase().includes(filters.search.toLowerCase()));
+    return filtered;
+  });
 };
 
 // ─── Company ─────────────────────────────────────────
 export const getCompanyData = async () => {
-  await delay(200);
-  return { data: companyData };
+  return withFallback(async () => {
+    const res = await api.get('/auth/me');
+    const user = res.data;
+    if (!user?.company_id) return { data: companyData };
+    const compRes = await api.get(`/companies/${user.company_id}`);
+    return { data: compRes.data };
+  }, companyData);
 };
 
 // ─── Profile ─────────────────────────────────────────
 export const getUserProfile = async () => {
-  await delay(150);
-  return { data: userData };
+  return withFallback(async () => {
+    const res = await api.get('/auth/me');
+    return { data: res.data };
+  }, userData);
 };
 
 // ─── Customers ───────────────────────────────────────
 export const getCustomers = async () => {
-  await delay(250);
-  return { data: mockCustomers };
+  return withFallback(async () => {
+    const res = await api.get('/customers');
+    const items = Array.isArray(res.data?.items) ? res.data.items : (Array.isArray(res.data) ? res.data : []);
+    if (!items.length) return { data: mockCustomers };
+    return { data: items };
+  }, mockCustomers);
+};
+
+// ─── Sales ───────────────────────────────────────────
+export const getSales = async (params = {}) => {
+  return withFallback(async () => {
+    const res = await api.get('/sales', { params });
+    const items = Array.isArray(res.data?.items) ? res.data.items : (Array.isArray(res.data) ? res.data : []);
+    return { data: items };
+  }, []);
+};
+
+// ─── Inventory ───────────────────────────────────────
+export const getInventory = async (params = {}) => {
+  return withFallback(async () => {
+    const res = await api.get('/inventory', { params });
+    const items = Array.isArray(res.data?.items) ? res.data.items : (Array.isArray(res.data) ? res.data : []);
+    return { data: items };
+  }, []);
+};
+
+// ─── Expenses ────────────────────────────────────────
+export const getExpenses = async (params = {}) => {
+  return withFallback(async () => {
+    const res = await api.get('/expenses', { params });
+    const items = Array.isArray(res.data?.items) ? res.data.items : (Array.isArray(res.data) ? res.data : []);
+    return { data: items };
+  }, []);
+};
+
+// ─── Register ────────────────────────────────────────
+export const registerUser = async ({ name, email, password, company_name, industry }) => {
+  return api.post('/auth/register', { name, email, password, company_name, industry });
 };
 
 export default api;

@@ -1,26 +1,32 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getCompanyData } from '../services/api';
 import Card from '../components/ui/Card';
 import Table from '../components/ui/Table';
 import Badge from '../components/ui/Badge';
+import Button from '../components/ui/Button';
 import StatCard from '../components/ui/StatCard';
-import { FiGlobe, FiMail, FiPhone, FiMapPin } from 'react-icons/fi';
+import { FiGlobe, FiMail, FiPhone, FiMapPin, FiAlertCircle, FiRefreshCw } from 'react-icons/fi';
 
 const Company = () => {
   const [company, setCompany] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const fetchData = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await getCompanyData();
+      setCompany(res.data);
+    } catch (err) {
+      console.error('Error fetching company metadata', err);
+      setError('Unable to load company details. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await getCompanyData();
-        setCompany(res.data);
-      } catch (err) {
-        console.error('Error fetching company metadata', err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchData();
   }, []);
 
@@ -49,6 +55,32 @@ const Company = () => {
           <div className="lg:col-span-2 h-72 rounded-xl shimmer" />
           <div className="h-72 rounded-xl shimmer" />
         </div>
+      </div>
+    );
+  }
+
+  if (error && !company) {
+    return (
+      <div className="space-y-6">
+        <div className="page-header">
+          <div>
+            <h1 className="page-title">Organization Profile</h1>
+            <p className="page-subtitle">Enterprise structure, department allocations, and corporate governance standards.</p>
+          </div>
+        </div>
+        <Card className="p-8 text-center space-y-4">
+          <div className="w-12 h-12 rounded-full bg-danger/10 text-danger flex items-center justify-center mx-auto">
+            <FiAlertCircle className="w-6 h-6" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-base font-semibold text-light-text-primary dark:text-dark-text-primary">Failed to load company metadata</h3>
+            <p className="text-xs text-light-text-muted dark:text-dark-text-muted max-w-sm mx-auto">{error}</p>
+          </div>
+          <Button variant="primary" size="sm" onClick={fetchData} className="inline-flex items-center gap-1.5">
+            <FiRefreshCw className="w-3.5 h-3.5" />
+            <span>Retry</span>
+          </Button>
+        </Card>
       </div>
     );
   }
@@ -173,7 +205,7 @@ const Company = () => {
                   </div>
                   <div className="flex justify-between text-[10px] text-light-text-muted dark:text-dark-text-muted">
                     <span>Deadline: {goal.deadline}</span>
-                    <span className="capitalize">{goal.status.replace('-', ' ')}</span>
+                    <span className="capitalize">{goal.status ? goal.status.replace('-', ' ') : 'In Progress'}</span>
                   </div>
                 </div>
               ))}

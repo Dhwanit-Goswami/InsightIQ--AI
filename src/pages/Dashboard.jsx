@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiCalendar, FiDownload, FiArrowRight } from 'react-icons/fi';
 import StatCard from '../components/ui/StatCard';
@@ -9,6 +9,7 @@ import AIResponseCard from '../components/ui/AIResponseCard';
 import { AreaChartWidget, DonutChartWidget } from '../components/charts/Charts';
 import { getDashboardKPIs, getAIPrimaryInsight, getRecentActivity, getMonthlyRevenue, getExpenseBreakdown } from '../services/api';
 import { exportToCSV } from '../utils/exportUtils';
+import { useAuth } from '../context/AuthContext';
 
 const getGreeting = () => {
   const hour = new Date().getHours();
@@ -19,6 +20,7 @@ const getGreeting = () => {
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [kpis, setKpis] = useState(null);
   const [primaryInsight, setPrimaryInsight] = useState(null);
   const [activities, setActivities] = useState([]);
@@ -79,7 +81,7 @@ const Dashboard = () => {
             <span>•</span>
             <span className="text-light-text-secondary dark:text-dark-text-secondary font-medium">{timeRange}</span>
           </div>
-          <h1 className="page-title">{getGreeting()}, Dhwanit</h1>
+          <h1 className="page-title">{getGreeting()}, {user?.name ? user.name.split(' ')[0] : 'Dhwanit'}</h1>
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">

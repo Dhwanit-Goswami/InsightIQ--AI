@@ -42,14 +42,14 @@ const formatMethod = (m = '') => {
 const mapSale = (s) => ({
   _id:       s.id,
   date:      formatDate(s.sale_date),
-  id:        s.invoice_number,
+  id:        s.invoice_number || `INV-${String(s.id).slice(0, 8)}`,
   customer:  s.customer?.name || 'Walk-in Customer',
   items:     (s.items || []).map(i => `${i.product?.name || 'Product'} ×${Number(i.quantity)}`).join(', ') || '—',
   total:     formatINR(s.total_amount),
-  method:    formatMethod(s.payment_method),
-  status:    s.status === 'completed' ? 'Settled' : s.status.charAt(0).toUpperCase() + s.status.slice(1),
+  method:    formatMethod(s.payment_method || ''),
+  status:    s.status === 'completed' ? 'Settled' : (s.status ? s.status.charAt(0).toUpperCase() + s.status.slice(1) : 'Pending'),
   rawTotal:  Number(s.total_amount || 0),
-  rawStatus: s.status,
+  rawStatus: s.status || 'pending',
 });
 
 // ── component ─────────────────────────────────────────────────────────────────
@@ -132,9 +132,9 @@ const Sales = () => {
   };
 
   const filteredSales = salesHistory.filter(s =>
-    s.customer.toLowerCase().includes(search.toLowerCase()) ||
-    s.id.toLowerCase().includes(search.toLowerCase()) ||
-    s.items.toLowerCase().includes(search.toLowerCase())
+    (s.customer || '').toLowerCase().includes(search.toLowerCase()) ||
+    (s.id || '').toLowerCase().includes(search.toLowerCase()) ||
+    (s.items || '').toLowerCase().includes(search.toLowerCase())
   );
 
   const columns = [

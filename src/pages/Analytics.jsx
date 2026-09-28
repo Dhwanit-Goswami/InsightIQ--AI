@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   FiFilter, FiDownload, FiCalendar, FiMapPin,
   FiLayers
@@ -80,7 +80,7 @@ const Analytics = () => {
   };
 
   const filteredProducts = products.filter(p =>
-    p.name.toLowerCase().includes(tableSearch.toLowerCase())
+    (p.name || '').toLowerCase().includes(tableSearch.toLowerCase())
   );
 
   const productCols = [

@@ -1,38 +1,44 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getAIInsights, getAIRecommendations, getBusinessHealthScores } from '../services/api';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import AIResponseCard from '../components/ui/AIResponseCard';
+import { FiAlertCircle, FiRefreshCw } from 'react-icons/fi';
 
 const AIInsights = () => {
   const [insights, setInsights] = useState([]);
   const [recs, setRecs] = useState([]);
   const [healthScores, setHealthScores] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const fetchData = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const [insRes, recRes, healRes] = await Promise.all([
+        getAIInsights(),
+        getAIRecommendations(),
+        getBusinessHealthScores(),
+      ]);
+      setInsights(insRes.data || []);
+      setRecs(recRes.data || []);
+      setHealthScores(healRes.data || []);
+    } catch (err) {
+      console.error('Error fetching AI insights', err);
+      setError('Unable to fetch live decision intelligence. Showing cached telemetry.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [insRes, recRes, healRes] = await Promise.all([
-          getAIInsights(),
-          getAIRecommendations(),
-          getBusinessHealthScores(),
-        ]);
-        setInsights(insRes.data || []);
-        setRecs(recRes.data || []);
-        setHealthScores(healRes.data || []);
-      } catch (err) {
-        console.error('Error fetching AI insights', err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchData();
   }, []);
 
   return (
     <div className="space-y-6">
-      {/* Ã¢"€Ã¢"€Ã¢"€ Header Ã¢"€Ã¢"€Ã¢"€ */}
+      {/* ─── Header ─── */}
       <div className="page-header">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -45,8 +51,24 @@ const AIInsights = () => {
         </div>
       </div>
 
+      {error && (
+        <div className="p-3 bg-danger/10 border border-danger/30 text-danger text-xs font-semibold rounded-xl flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <FiAlertCircle className="w-4 h-4 flex-shrink-0" />
+            <span>{error}</span>
+          </div>
+          <button
+            onClick={fetchData}
+            className="flex items-center gap-1 hover:underline font-bold text-xs cursor-pointer"
+          >
+            <FiRefreshCw className="w-3 h-3" />
+            <span>Retry</span>
+          </button>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Ã¢"€Ã¢"€Ã¢"€ Left 2 Columns: Active Insights Stream Ã¢"€Ã¢"€Ã¢"€ */}
+        {/* ─── Left 2 Columns: Active Insights Stream ─── */}
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="section-title">Active Business Observations</h2>
@@ -59,17 +81,21 @@ const AIInsights = () => {
             Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border p-5 rounded-xl h-48 shimmer" />
             ))
+          ) : insights.length === 0 ? (
+            <Card className="p-8 text-center text-xs text-light-text-muted dark:text-dark-text-muted">
+              No critical risks or variance alerts flagged in current period. Business indicators remain within baseline operating thresholds.
+            </Card>
           ) : (
             insights.map((item) => (
               <AIResponseCard
                 key={item.id}
                 headline={item.title}
-                whyChanged={item.summary}
-                recommendedAction={item.details?.[0] || 'Schedule internal review with department heads.'}
+                whyChanged={item.summary || item.description}
+                recommendedAction={item.details?.[0] || item.recommendations?.[0]?.action || 'Schedule internal review with department heads.'}
                 confidence={item.confidence}
-                confidenceBasis={item.details?.join(' • ') || 'Multivariate regional dataset'}
+                confidenceBasis={Array.isArray(item.details) ? item.details.join(' • ') : (item.confidenceBasis || 'Multivariate regional dataset')}
                 sources="Sales Ledger + Inventory ERP"
-                category={item.type === 'risk' ? 'Risk Alert' : item.type === 'prediction' ? 'Forecast' : 'Opportunity'}
+                category={item.category ? (item.category.charAt(0).toUpperCase() + item.category.slice(1)) : (item.type === 'risk' ? 'Risk Alert' : item.type === 'prediction' ? 'Forecast' : 'Opportunity')}
                 actionLabel={item.actions?.[0] || 'Take Action'}
               />
             ))

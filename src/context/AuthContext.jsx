@@ -49,6 +49,8 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
+// oxlint-disable-next-line react/only-export-components
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be used inside AuthProvider');

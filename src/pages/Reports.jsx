@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { getReports } from '../services/api';
 import Card from '../components/ui/Card';
 import Table from '../components/ui/Table';
@@ -9,7 +9,7 @@ import Modal from '../components/ui/Modal';
 import Input from '../components/ui/Input';
 import {
   FiDownload, FiEye, FiShare2, FiFileText,
-  FiPlus, FiCheck
+  FiPlus, FiCheck, FiAlertCircle, FiRefreshCw
 } from 'react-icons/fi';
 import { exportToCSV } from '../utils/exportUtils';
 
@@ -18,6 +18,7 @@ const Reports = () => {
   const [typeFilter, setTypeFilter] = useState('All');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   // Modals & Notifications
   const [viewingReport, setViewingReport] = useState(null);
@@ -27,20 +28,23 @@ const Reports = () => {
   const [newPeriod, setNewPeriod] = useState('Q3 FY26');
   const [toastMessage, setToastMessage] = useState('');
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const res = await getReports({ type: typeFilter, search });
-        setReports(res.data || []);
-      } catch (err) {
-        console.error('Error fetching reports', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await getReports({ type: typeFilter, search });
+      setReports(res.data || []);
+    } catch (err) {
+      console.error('Error fetching reports', err);
+      setError('Unable to load reports. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   }, [typeFilter, search]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -48,18 +52,19 @@ const Reports = () => {
   };
 
   const handleDownload = (report) => {
+    const reportTitle = report.name || report.title || 'Executive_Audit_Report';
     const sampleAuditData = [
-      { Parameter: 'Report Document', Value: report.name },
-      { Parameter: 'Document Type', Value: report.type },
-      { Parameter: 'Fiscal Period', Value: report.period },
-      { Parameter: 'Last Updated', Value: report.lastUpdated },
+      { Parameter: 'Report Document', Value: reportTitle },
+      { Parameter: 'Document Type', Value: report.type || 'Audit' },
+      { Parameter: 'Fiscal Period', Value: report.period || 'Q3 FY26' },
+      { Parameter: 'Last Updated', Value: report.lastUpdated || 'Recent' },
       { Parameter: 'Gross Volume Verified', Value: '₹1,42,00,000' },
       { Parameter: 'Operating Margin', Value: '26.2%' },
       { Parameter: 'GST Filing Compliance', Value: '100% Reconciled (GSTR-1 & 3B)' },
-      { Parameter: 'Entity', Value: 'Vardaan Electronics Pvt. Ltd.' },
+      { Parameter: 'Entity', Value: 'Enterprise Account' },
     ];
-    exportToCSV(sampleAuditData, `${report.name.replace(/[^a-zA-Z0-9]/g, '_')}.csv`);
-    showToast(`Downloaded: ${report.name}`);
+    exportToCSV(sampleAuditData, `${reportTitle.replace(/[^a-zA-Z0-9]/g, '_')}.csv`);
+    showToast(`Downloaded: ${reportTitle}`);
   };
 
   const handleShare = (report) => {
@@ -197,6 +202,23 @@ const Reports = () => {
           <span>Generate Report</span>
         </Button>
       </div>
+
+      {/* Error Alert */}
+      {error && (
+        <div className="p-3 bg-danger/10 border border-danger/30 text-danger text-xs font-semibold rounded-xl flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <FiAlertCircle className="w-4 h-4 flex-shrink-0" />
+            <span>{error}</span>
+          </div>
+          <button
+            onClick={fetchData}
+            className="flex items-center gap-1 hover:underline font-bold text-xs cursor-pointer"
+          >
+            <FiRefreshCw className="w-3 h-3" />
+            <span>Retry</span>
+          </button>
+        </div>
+      )}
 
       {/* Toast Feedback */}
       {toastMessage && (

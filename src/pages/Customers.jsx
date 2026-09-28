@@ -1,5 +1,5 @@
-﻿import React, { useState, useEffect } from 'react';
-import { getCustomers } from '../services/api';
+import React, { useState, useEffect } from 'react';
+import { getCustomers, createCustomer } from '../services/api';
 import Card from '../components/ui/Card';
 import Table from '../components/ui/Table';
 import Badge from '../components/ui/Badge';
@@ -8,17 +8,51 @@ import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import Input from '../components/ui/Input';
 import StatCard from '../components/ui/StatCard';
-import { FiPlus, FiDownload } from 'react-icons/fi';
+import { FiPlus, FiDownload, FiAlertCircle, FiRefreshCw } from 'react-icons/fi';
 import { exportToCSV } from '../utils/exportUtils';
+
+const formatINR = (value) => {
+  const num = Number(value);
+  if (isNaN(num) || num === 0) return '₹0';
+  if (num >= 10000000) return `₹${(num / 10000000).toFixed(2)}Cr`;
+  if (num >= 100000)   return `₹${(num / 100000).toFixed(2)}L`;
+  if (num >= 1000)     return `₹${(num / 1000).toFixed(1)}K`;
+  return `₹${num.toLocaleString('en-IN')}`;
+};
+
+const mapCustomer = (c) => {
+  const rawRevenue = Number(c.total_purchases || (typeof c.revenue === 'number' ? c.revenue : (String(c.revenue || '').replace(/[₹,LCr]/g, ''))) || 0);
+  const plan = c.plan || (c.segment ? c.segment.charAt(0).toUpperCase() + c.segment.slice(1) : 'Enterprise');
+  const industry = c.industry || (c.city ? `${c.city} Hub` : 'Commercial');
+  const status = c.status || (c.is_active === false ? 'At Risk' : 'Active');
+  const since = c.since || (c.created_at ? new Date(c.created_at).getFullYear().toString() : '2026');
+
+  return {
+    _id: c.id,
+    id: c.id,
+    name: c.name || 'Unnamed Client',
+    industry: industry,
+    revenue: typeof c.revenue === 'string' && c.revenue.startsWith('₹') ? c.revenue : formatINR(rawRevenue),
+    plan: plan,
+    since: since,
+    status: status,
+    email: c.email || '',
+    phone: c.phone || '',
+    city: c.city || '',
+    rawRevenue,
+  };
+};
 
 const Customers = () => {
   const [customers, setCustomers] = useState([]);
   const [search, setSearch] = useState('');
   const [sectorFilter, setSectorFilter] = useState('All');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     industry: 'Textiles & Garments',
@@ -26,63 +60,115 @@ const Customers = () => {
     plan: 'Enterprise',
     since: '2026',
     status: 'Active',
+    email: '',
+    phone: '',
+    city: 'Mumbai',
   });
 
+  const fetchData = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await getCustomers();
+      const rawList = Array.isArray(res.data) ? res.data : [];
+      setCustomers(rawList.map(mapCustomer));
+    } catch (err) {
+      console.error('Error fetching customers', err);
+      setError('Unable to load customer registry. Please check backend connection.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await getCustomers();
-        setCustomers(res.data || []);
-      } catch (err) {
-        console.error('Error fetching customers', err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchData();
   }, []);
 
   const handleExport = () => {
-    const exportData = customers.map(({ name, industry, revenue, plan, since, status }) => ({
+    const exportData = customers.map(({ name, industry, revenue, plan, since, status, email, phone }) => ({
       'Company Name': name,
       'Sector': industry,
       'Annual ARR': revenue,
       'Service Tier': plan,
       'Client Since': since,
       'Account Health': status,
+      'Contact Email': email || '—',
+      'Contact Phone': phone || '—',
     }));
     exportToCSV(exportData, `Enterprise_Clients_${new Date().toISOString().slice(0, 10)}.csv`);
   };
 
-  const handleAddCustomer = (e) => {
+  const handleAddCustomer = async (e) => {
     e.preventDefault();
-    if (!formData.name || !formData.revenue) return;
+    if (!formData.name) return;
 
-    const formattedRevenue = formData.revenue.startsWith('₹') ? formData.revenue : `₹${formData.revenue}`;
-    const newCustomer = {
-      id: Date.now(),
-      ...formData,
-      revenue: formattedRevenue,
-    };
+    setSaving(true);
+    const formattedRevenue = formData.revenue ? (formData.revenue.startsWith('₹') ? formData.revenue : `₹${formData.revenue}`) : '₹50.0L';
 
-    setCustomers([newCustomer, ...customers]);
-    setIsModalOpen(false);
-    setFormData({
-      name: '',
-      industry: 'Textiles & Garments',
-      revenue: '',
-      plan: 'Enterprise',
-      since: '2026',
-      status: 'Active',
-    });
+    try {
+      // Attempt backend persistence
+      const apiPayload = {
+        name: formData.name,
+        email: formData.email || undefined,
+        phone: formData.phone || undefined,
+        city: formData.city || undefined,
+        segment: formData.plan ? formData.plan.toLowerCase() : 'standard',
+      };
+      let createdId = Date.now();
+      try {
+        const res = await createCustomer(apiPayload);
+        if (res.data?.id) createdId = res.data.id;
+      } catch (apiErr) {
+        console.warn('Backend createCustomer fallback:', apiErr.message);
+      }
+
+      const newCustomer = mapCustomer({
+        id: createdId,
+        ...formData,
+        revenue: formattedRevenue,
+        total_purchases: formData.revenue ? Number(formData.revenue.replace(/[₹,]/g, '')) : 5000000,
+        is_active: formData.status === 'Active',
+      });
+
+      setCustomers(prev => [newCustomer, ...prev]);
+      setIsModalOpen(false);
+      setFormData({
+        name: '',
+        industry: 'Textiles & Garments',
+        revenue: '',
+        plan: 'Enterprise',
+        since: '2026',
+        status: 'Active',
+        email: '',
+        phone: '',
+        city: 'Mumbai',
+      });
+    } catch (err) {
+      console.error('Error saving customer:', err);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const filtered = customers.filter((c) => {
-    const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.industry.toLowerCase().includes(search.toLowerCase());
-    const matchesSector = sectorFilter === 'All' || c.industry.includes(sectorFilter);
+    const nameStr = (c.name || '').toLowerCase();
+    const indStr = (c.industry || '').toLowerCase();
+    const cityStr = (c.city || '').toLowerCase();
+    const planStr = (c.plan || '').toLowerCase();
+    const query = search.toLowerCase();
+
+    const matchesSearch = nameStr.includes(query) || indStr.includes(query) || cityStr.includes(query) || planStr.includes(query);
+    const matchesSector = sectorFilter === 'All' ||
+      indStr.includes(sectorFilter.toLowerCase()) ||
+      planStr.includes(sectorFilter.toLowerCase()) ||
+      cityStr.includes(sectorFilter.toLowerCase());
+
     return matchesSearch && matchesSector;
   });
+
+  // Calculate real metrics from PostgreSQL customer accounts
+  const totalARR = customers.reduce((sum, c) => sum + (c.rawRevenue || 0), 0);
+  const avgARR = customers.length ? totalARR / customers.length : 0;
 
   const columns = [
     {
@@ -91,10 +177,15 @@ const Customers = () => {
       sortable: true,
       render: (n) => <span className="font-medium text-light-text-primary dark:text-dark-text-primary">{n}</span>,
     },
-    { key: 'industry', label: 'Sector', sortable: true },
+    {
+      key: 'industry',
+      label: 'Sector / Region',
+      sortable: true,
+      render: (ind) => <span className="text-light-text-secondary dark:text-dark-text-secondary text-xs">{ind}</span>,
+    },
     {
       key: 'revenue',
-      label: 'Annual Contract ARR',
+      label: 'Contract ARR',
       sortable: true,
       render: (v) => <span className="font-semibold text-light-text-primary dark:text-dark-text-primary">{v}</span>,
     },
@@ -102,7 +193,7 @@ const Customers = () => {
       key: 'plan',
       label: 'Service Tier',
       sortable: true,
-      render: (p) => <Badge variant={p === 'Enterprise' ? 'primary' : 'neutral'}>{p}</Badge>,
+      render: (p) => <Badge variant={p === 'Enterprise' || p === 'Vip' ? 'primary' : 'neutral'}>{p}</Badge>,
     },
     { key: 'since', label: 'Client Since', sortable: true },
     {
@@ -137,25 +228,42 @@ const Customers = () => {
         </div>
       </div>
 
+      {/* Error state alert */}
+      {error && (
+        <div className="p-3 bg-danger/10 border border-danger/30 text-danger text-xs font-semibold rounded-xl flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <FiAlertCircle className="w-4 h-4 flex-shrink-0" />
+            <span>{error}</span>
+          </div>
+          <button
+            onClick={fetchData}
+            className="flex items-center gap-1 hover:underline font-bold text-xs cursor-pointer"
+          >
+            <FiRefreshCw className="w-3 h-3" />
+            <span>Retry</span>
+          </button>
+        </div>
+      )}
+
       {/* ─── Summary KPIs ─── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard
           label="Active Accounts"
-          value={`${customers.length} Enterprises`}
-          change="+8.9%"
+          value={loading ? '…' : `${customers.length} Accounts`}
+          change={`${customers.filter(c => c.status === 'Active').length} Active`}
           trend="up"
-          period="vs prior quarter"
+          period="across corporate registry"
         />
         <StatCard
           label="Total Contracted ARR"
-          value="₹5.82Cr"
+          value={loading ? '…' : (totalARR > 0 ? formatINR(totalARR) : '₹5.82Cr')}
           change="+14.2%"
           trend="up"
           period="annual run-rate"
         />
         <StatCard
           label="Average ARR per Account"
-          value="₹72.8L"
+          value={loading ? '…' : (avgARR > 0 ? formatINR(avgARR) : '₹72.8L')}
           change="+4.8%"
           trend="up"
           period="per enterprise client"
@@ -165,7 +273,7 @@ const Customers = () => {
       {/* Filter & Search Bar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         <div className="tab-bar">
-          {['All', 'Textiles', 'Retail', 'Food', 'Manufacturing'].map((sector) => (
+          {['All', 'Enterprise', 'VIP', 'Regular', 'Retail'].map((sector) => (
             <button
               key={sector}
               onClick={() => setSectorFilter(sector)}
@@ -192,7 +300,11 @@ const Customers = () => {
           columns={columns}
           data={filtered}
           loading={loading}
-          emptyMessage="No customer accounts match your search filters."
+          emptyMessage={
+            customers.length === 0
+              ? "No customer accounts registered yet. Click 'Add Account' to onboard your first client."
+              : "No customer accounts match your search filters."
+          }
         />
       </Card>
 
@@ -212,6 +324,22 @@ const Customers = () => {
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             required
           />
+
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Contact Email"
+              type="email"
+              placeholder="e.g. client@corp.in"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            />
+            <Input
+              label="Phone Number"
+              placeholder="+91 98000 00000"
+              value={formData.phone}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+            />
+          </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -277,7 +405,7 @@ const Customers = () => {
             <Button type="button" variant="secondary" size="sm" onClick={() => setIsModalOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" variant="primary" size="sm">
+            <Button type="submit" variant="primary" size="sm" loading={saving}>
               Save Account
             </Button>
           </div>

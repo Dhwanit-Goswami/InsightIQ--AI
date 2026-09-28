@@ -1,12 +1,14 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { FiUser, FiSettings, FiLogOut, FiShield, FiChevronDown } from 'react-icons/fi';
+import { useAuth } from '../../context/AuthContext';
 import { userData } from '../../data/mockUser';
 
 const UserDropdown = () => {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
 
   useEffect(() => {
     const handler = (e) => { if (!ref.current?.contains(e.target)) setOpen(false); };
@@ -16,8 +18,19 @@ const UserDropdown = () => {
 
   const handleLogout = () => {
     setOpen(false);
+    logout();
     navigate('/login');
   };
+
+  const displayName = user?.name || userData.fullName;
+  const names = displayName.trim().split(' ');
+  const firstName = names[0] || 'User';
+  const initials = user?.name
+    ? ((names[0]?.[0] || '') + (names[1]?.[0] || names[0]?.[1] || 'U')).toUpperCase()
+    : userData.initials;
+  const role = user?.role ? (user.role.charAt(0).toUpperCase() + user.role.slice(1)) : userData.role;
+  const email = user?.email || userData.email;
+  const companyName = user?.company?.name || userData.company;
 
   return (
     <div ref={ref} className="relative">
@@ -28,11 +41,11 @@ const UserDropdown = () => {
         aria-label="User menu"
       >
         <div className="w-6 h-6 rounded-md bg-primary text-white flex items-center justify-center text-[11px] font-semibold flex-shrink-0 shadow-sm">
-          {userData.initials}
+          {initials}
         </div>
         <div className="hidden sm:block text-left">
-          <p className="text-xs font-medium text-light-text-primary dark:text-dark-text-primary leading-none">{userData.firstName}</p>
-          <p className="text-[10px] text-light-text-muted dark:text-dark-text-muted mt-0.5 font-normal truncate max-w-[120px]">{userData.role}</p>
+          <p className="text-xs font-medium text-light-text-primary dark:text-dark-text-primary leading-none">{firstName}</p>
+          <p className="text-[10px] text-light-text-muted dark:text-dark-text-muted mt-0.5 font-normal truncate max-w-[120px]">{role}</p>
         </div>
         <FiChevronDown className={`w-3 h-3 text-light-text-muted dark:text-dark-text-muted transition-transform duration-180 ${open ? 'rotate-180' : ''}`} />
       </button>
@@ -41,10 +54,10 @@ const UserDropdown = () => {
         <div className="absolute right-0 top-11 w-56 bg-light-card dark:bg-dark-card rounded-xl shadow-card-lg dark:shadow-card-lg-dark border border-light-border dark:border-dark-border z-50 animate-fade-in overflow-hidden">
           {/* Profile header */}
           <div className="px-3.5 py-3 border-b border-light-border dark:border-dark-border bg-light-surface/40 dark:bg-dark-surface/40">
-            <p className="text-xs font-semibold text-light-text-primary dark:text-dark-text-primary truncate">{userData.fullName}</p>
-            <p className="text-[11px] text-light-text-muted dark:text-dark-text-muted truncate mt-0.5">{userData.email}</p>
-            <span className="inline-block px-1.5 py-0.5 mt-1.5 text-[10px] font-medium bg-light-surface text-light-text-secondary dark:bg-dark-surface dark:text-dark-text-secondary rounded border border-light-border dark:border-dark-border">
-              {userData.company}
+            <p className="text-xs font-semibold text-light-text-primary dark:text-dark-text-primary truncate">{displayName}</p>
+            <p className="text-[11px] text-light-text-muted dark:text-dark-text-muted truncate mt-0.5">{email}</p>
+            <span className="inline-block px-1.5 py-0.5 mt-1.5 text-[10px] font-medium bg-light-surface text-light-text-secondary dark:bg-dark-surface dark:text-dark-text-secondary rounded border border-light-border dark:border-dark-border truncate max-w-full">
+              {companyName}
             </span>
           </div>
 

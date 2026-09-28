@@ -125,9 +125,9 @@ const Inventory = () => {
   };
 
   const filteredItems = stockItems.filter(item =>
-    item.name.toLowerCase().includes(search.toLowerCase()) ||
-    item.sku.toLowerCase().includes(search.toLowerCase()) ||
-    item.category.toLowerCase().includes(search.toLowerCase())
+    (item.name || '').toLowerCase().includes(search.toLowerCase()) ||
+    (item.sku || '').toLowerCase().includes(search.toLowerCase()) ||
+    (item.category || '').toLowerCase().includes(search.toLowerCase())
   );
 
   const columns = [

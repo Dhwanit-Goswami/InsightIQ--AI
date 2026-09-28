@@ -31,17 +31,17 @@ const formatDate = (dateStr) => {
   } catch { return dateStr; }
 };
 
-const capitalize = (str = '') => str.charAt(0).toUpperCase() + str.slice(1);
+const capitalize = (str = '') => str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
 
 const mapExpense = (e) => ({
   _id:      e.id,
   date:     formatDate(e.expense_date),
-  desc:     e.description,
-  category: capitalize(e.category),
+  desc:     e.description || 'General Corporate Expense',
+  category: capitalize(e.category) || 'General',
   amount:   formatINR(e.amount),
-  status:   e.status === 'paid' ? 'Approved' : capitalize(e.status),
+  status:   e.status === 'paid' ? 'Approved' : (capitalize(e.status) || 'Pending'),
   rawAmount: Number(e.amount || 0),
-  rawStatus: e.status,
+  rawStatus: e.status || 'pending',
 });
 
 // Build donut chart from real expense data
@@ -138,8 +138,8 @@ const Expenses = () => {
   };
 
   const filteredExpenses = expenseLogs.filter(e =>
-    e.desc.toLowerCase().includes(search.toLowerCase()) ||
-    e.category.toLowerCase().includes(search.toLowerCase())
+    (e.desc || '').toLowerCase().includes(search.toLowerCase()) ||
+    (e.category || '').toLowerCase().includes(search.toLowerCase())
   );
 
   const columns = [

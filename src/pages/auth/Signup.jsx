@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { FiMail, FiLock, FiUser, FiBriefcase } from 'react-icons/fi';
+import { FiMail, FiLock, FiUser, FiBriefcase, FiAlertCircle } from 'react-icons/fi';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import { useAuth } from '../../context/AuthContext';
 
 const Signup = () => {
   const navigate = useNavigate();
-  const { register } = useAuth();
+  const { register, isAuthenticated } = useAuth();
   const [fullName, setFullName]         = useState('');
   const [companyName, setCompanyName]   = useState('');
   const [businessType, setBusinessType] = useState('manufacturing');
@@ -15,6 +15,12 @@ const Signup = () => {
   const [password, setPassword]         = useState('');
   const [loading, setLoading]           = useState(false);
   const [error, setError]               = useState('');
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -63,6 +69,13 @@ const Signup = () => {
             Start your 14-day evaluation with live decision intelligence.
           </p>
         </div>
+
+        {error && (
+          <div className="mb-4 flex items-start gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-xs text-red-700 dark:text-red-300">
+            <FiAlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+            <span>{error}</span>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-3.5">
           <Input

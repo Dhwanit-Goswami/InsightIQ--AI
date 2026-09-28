@@ -1,8 +1,9 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { sendAIMessage } from '../services/api';
 import { FiSend, FiCpu, FiTrash2, FiArrowRight } from 'react-icons/fi';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
+import { useAuth } from '../context/AuthContext';
 import { userData } from '../data/mockUser';
 
 const suggestedPrompts = [
@@ -14,6 +15,7 @@ const suggestedPrompts = [
 ];
 
 const AIAssistant = () => {
+  const { user } = useAuth();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -235,7 +237,7 @@ const AIAssistant = () => {
             {/* User Avatar */}
             {m.role === 'user' && (
               <div className="w-7 h-7 rounded-lg bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border flex items-center justify-center flex-shrink-0 text-xs font-semibold text-light-text-primary dark:text-dark-text-primary mt-0.5 shadow-sm">
-                {userData.initials}
+                {user?.name ? ((user.name.split(' ')[0]?.[0] || '') + (user.name.split(' ')[1]?.[0] || 'U')).toUpperCase() : userData.initials}
               </div>
             )}
           </div>

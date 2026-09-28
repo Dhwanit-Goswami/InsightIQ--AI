@@ -4,7 +4,7 @@ import { monthlyRevenue, expenseBreakdown, customerGrowth, performanceRadar, qua
 import { aiInsights, aiRecommendations, businessHealthScores, aiChatHistory, suggestedPrompts } from '../data/mockAI';
 import { allReports } from '../data/mockReports';
 import { companyData } from '../data/mockCompany';
-import { userData, mockCustomers } from '../data/mockUser';
+import { userData } from '../data/mockUser';
 
 // ─── Axios Instance ───────────────────────────────────
 const api = axios.create({
@@ -238,26 +238,32 @@ export const getTopProducts = async () => {
 export const getAIInsights = async () => {
   return withFallback(async () => {
     // First try to generate fresh ones, then fetch
-    try { await api.post('/insights/generate'); } catch (_) {}
+    try { await api.post('/insights/generate'); } catch { /* ignore if already generated */ }
     const res = await api.get('/insights');
     const items = Array.isArray(res.data) ? res.data : [];
     if (!items.length) return { data: aiInsights };
     return {
-      data: items.map(ins => ({
-        id:          ins.id,
-        title:       ins.title,
-        description: ins.description,
-        category:    ins.category,
-        severity:    ins.severity || 'medium',
-        confidence:  Math.round((ins.confidence_score || 0.85) * 100),
-        is_read:     ins.is_read || false,
-        recommendations: (ins.recommendations || []).map(r => ({
-          action:   r.action,
-          priority: r.priority || 'medium',
-          status:   r.status   || 'pending',
-        })),
-        created_at: ins.created_at,
-      }))
+      data: items.map(ins => {
+        const actions = (ins.recommendations || []).map(r => r.action).filter(Boolean);
+        return {
+          id:          ins.id,
+          title:       ins.title,
+          summary:     ins.description,
+          description: ins.description,
+          category:    ins.category,
+          severity:    ins.severity || 'medium',
+          confidence:  Math.round((ins.confidence_score || 0.85) * 100),
+          is_read:     ins.is_read || false,
+          details:     actions.length ? actions : ['Review telemetry and transactional ledger'],
+          actions:     actions.length ? actions : ['Review Details'],
+          recommendations: (ins.recommendations || []).map(r => ({
+            action:   r.action,
+            priority: r.priority || 'medium',
+            status:   r.status   || 'pending',
+          })),
+          created_at: ins.created_at,
+        };
+      })
     };
   }, aiInsights);
 };
@@ -362,8 +368,20 @@ export const getReports = async (filters = {}) => {
     const res = await api.get('/reports');
     let items = Array.isArray(res.data?.items) ? res.data.items : (Array.isArray(res.data) ? res.data : []);
     if (!items.length) return { data: allReports };
+    items = items.map(r => ({
+      ...r,
+      type: r.type || (r.report_type ? r.report_type.charAt(0).toUpperCase() + r.report_type.slice(1) : 'Financial'),
+      status: r.status === 'completed' ? 'Ready' : (r.status ? r.status.charAt(0).toUpperCase() + r.status.slice(1) : 'Ready'),
+      lastUpdated: r.completed_at
+        ? new Date(r.completed_at).toLocaleDateString('en-IN')
+        : (r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN') : 'Recent'),
+      pages: r.pages || '12 Pages',
+      size: r.size || '1.6 MB',
+      summary: r.description || r.summary || `Audit report compiled for ${r.name}.`,
+      period: r.parameters?.period || r.period || 'Q3 FY26',
+    }));
     if (filters.type && filters.type !== 'All') {
-      items = items.filter(r => r.report_type === filters.type || r.type === filters.type);
+      items = items.filter(r => r.type.toLowerCase() === filters.type.toLowerCase());
     }
     if (filters.search) {
       items = items.filter(r => (r.name || r.title || '').toLowerCase().includes(filters.search.toLowerCase()));
@@ -384,7 +402,21 @@ export const getCompanyData = async () => {
     const user = res.data;
     if (!user?.company_id) return { data: companyData };
     const compRes = await api.get(`/companies/${user.company_id}`);
-    return { data: compRes.data };
+    const comp = compRes.data;
+    const hq = [comp.address, comp.city, comp.state].filter(Boolean).join(', ');
+    return {
+      data: {
+        ...companyData,
+        ...comp,
+        tier: comp.tier || companyData.tier,
+        tagline: comp.tagline || companyData.tagline,
+        description: comp.description || companyData.description,
+        headquarters: hq || companyData.headquarters,
+        departments: comp.departments || companyData.departments,
+        goals: comp.goals || companyData.goals,
+        revenue: comp.revenue || companyData.revenue,
+      }
+    };
   }, companyData);
 };
 
@@ -392,18 +424,48 @@ export const getCompanyData = async () => {
 export const getUserProfile = async () => {
   return withFallback(async () => {
     const res = await api.get('/auth/me');
-    return { data: res.data };
+    const user = res.data;
+    const names = (user.name || '').trim().split(' ');
+    const firstName = names[0] || '';
+    const lastName = names.slice(1).join(' ') || '';
+    const initials = ((firstName[0] || '') + (lastName[0] || firstName[1] || 'U')).toUpperCase();
+    const joinedDate = user.created_at
+      ? new Date(user.created_at).toLocaleDateString('en-IN', { month: 'long', day: 'numeric', year: 'numeric' })
+      : 'March 14, 2021';
+    const lastLogin = user.last_login
+      ? new Date(user.last_login).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
+      : 'Recent';
+
+    return {
+      data: {
+        ...userData,
+        ...user,
+        fullName: user.name || userData.fullName,
+        firstName: firstName || userData.firstName,
+        lastName: lastName || userData.lastName,
+        initials: initials || userData.initials,
+        email: user.email || userData.email,
+        role: user.role ? (user.role.charAt(0).toUpperCase() + user.role.slice(1)) : userData.role,
+        joinedDate,
+        lastLogin,
+        timezone: 'Asia/Kolkata (IST)',
+        security: userData.security,
+      }
+    };
   }, userData);
 };
 
 // ─── Customers ───────────────────────────────────────
-export const getCustomers = async () => {
+export const getCustomers = async (params = {}) => {
   return withFallback(async () => {
-    const res = await api.get('/customers');
+    const res = await api.get('/customers', { params });
     const items = Array.isArray(res.data?.items) ? res.data.items : (Array.isArray(res.data) ? res.data : []);
-    if (!items.length) return { data: mockCustomers };
     return { data: items };
-  }, mockCustomers);
+  }, []);
+};
+
+export const createCustomer = async (customerData) => {
+  return api.post('/customers', customerData);
 };
 
 // ─── Sales ───────────────────────────────────────────

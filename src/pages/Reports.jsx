@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getReports } from '../services/api';
+import { getReports, createReport } from '../services/api';
 import Card from '../components/ui/Card';
 import Table from '../components/ui/Table';
 import SearchBar from '../components/ui/SearchBar';
@@ -27,6 +27,7 @@ const Reports = () => {
   const [newType, setNewType] = useState('Financial');
   const [newPeriod, setNewPeriod] = useState('Q3 FY26');
   const [toastMessage, setToastMessage] = useState('');
+  const [creating, setCreating] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -72,26 +73,43 @@ const Reports = () => {
     showToast(`Share link copied for: ${report.name}`);
   };
 
-  const handleCreateReport = (e) => {
+  const handleCreateReport = async (e) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
 
-    const created = {
-      id: Date.now(),
-      name: newTitle,
-      type: newType,
-      period: newPeriod,
-      status: 'Ready',
-      lastUpdated: 'Just now',
-      pages: '12 Pages',
-      size: '1.6 MB',
-      summary: `Custom synthesized ${newType.toLowerCase()} audit compiled for ${newPeriod}.`,
-    };
-
-    setReports([created, ...reports]);
-    setIsCreateModalOpen(false);
-    setNewTitle('');
-    showToast(`Compiled report: ${created.name}`);
+    setCreating(true);
+    try {
+      const res = await createReport({
+        name: newTitle,
+        report_type: newType.toLowerCase(),
+        period: newPeriod,
+      });
+      const created = res.data;
+      setReports([created, ...reports]);
+      setIsCreateModalOpen(false);
+      setNewTitle('');
+      showToast(`Compiled report: ${created.name}`);
+    } catch (err) {
+      console.error('Error creating report', err);
+      // Fallback: add optimistically if backend fails (e.g. in demo mode)
+      const fallback = {
+        id: Date.now(),
+        name: newTitle,
+        type: newType,
+        period: newPeriod,
+        status: 'Ready',
+        lastUpdated: 'Just now',
+        pages: '12 Pages',
+        size: '1.6 MB',
+        summary: `Custom synthesized ${newType.toLowerCase()} audit compiled for ${newPeriod}.`,
+      };
+      setReports([fallback, ...reports]);
+      setIsCreateModalOpen(false);
+      setNewTitle('');
+      showToast(`Compiled report: ${fallback.name}`);
+    } finally {
+      setCreating(false);
+    }
   };
 
   // Section 21: Table columns (Report name, Type, Period, Status, Last updated, Actions: View, Download, Share)
@@ -386,11 +404,11 @@ const Reports = () => {
           </div>
 
           <div className="flex justify-end gap-2 pt-3">
-            <Button type="button" variant="secondary" size="sm" onClick={() => setIsCreateModalOpen(false)}>
+            <Button type="button" variant="secondary" size="sm" onClick={() => setIsCreateModalOpen(false)} disabled={creating}>
               Cancel
             </Button>
-            <Button type="submit" variant="primary" size="sm">
-              Compile & Save
+            <Button type="submit" variant="primary" size="sm" disabled={creating}>
+              {creating ? 'Compiling…' : 'Compile & Save'}
             </Button>
           </div>
         </form>

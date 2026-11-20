@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 const AuthContext = createContext(null);
@@ -7,6 +8,7 @@ const TOKEN_KEY = 'insightiq_token';
 const USER_KEY  = 'insightiq_user';
 
 export const AuthProvider = ({ children }) => {
+  const navigate = useNavigate();
   const [token, setToken]   = useState(() => localStorage.getItem(TOKEN_KEY) || null);
   const [user,  setUser]    = useState(() => {
     try { return JSON.parse(localStorage.getItem(USER_KEY)) || null; }
@@ -39,6 +41,21 @@ export const AuthProvider = ({ children }) => {
     setToken(null);
     setUser(null);
   }, []);
+
+  // Listen for unauthorized 401 events emitted by Axios interceptor
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      logout();
+      // Redirect to login if not already on an unauthenticated route
+      const publicPaths = ['/login', '/signup', '/forgot-password', '/'];
+      if (!publicPaths.includes(window.location.pathname)) {
+        navigate('/login', { replace: true, state: { sessionExpired: true } });
+      }
+    };
+
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
+  }, [logout, navigate]);
 
   const isAuthenticated = !!token;
 

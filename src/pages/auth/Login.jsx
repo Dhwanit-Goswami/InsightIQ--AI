@@ -14,7 +14,9 @@ const Login = () => {
   const [rememberMe, setRememberMe]     = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading]           = useState(false);
-  const [error, setError]               = useState('');
+  const [error, setError]               = useState(() =>
+    location.state?.sessionExpired ? 'Your session has expired. Please sign in again.' : ''
+  );
 
   useEffect(() => {
     if (isAuthenticated) {

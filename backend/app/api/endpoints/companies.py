@@ -30,8 +30,8 @@ def get_company_by_id(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Retrieve company details. Enforces company isolation."""
-    if current_user.company_id != company_id and current_user.role != "owner":
+    """Retrieve company details. Enforces strict company isolation."""
+    if current_user.company_id != company_id:
         raise HTTPException(status_code=403, detail="Cross-company access is prohibited.")
     company = db.query(Company).filter(Company.id == company_id).first()
     if not company:

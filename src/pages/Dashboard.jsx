@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiCalendar, FiDownload, FiArrowRight } from 'react-icons/fi';
+import { FiCalendar, FiDownload, FiArrowRight, FiAlertCircle, FiRefreshCw } from 'react-icons/fi';
 import StatCard from '../components/ui/StatCard';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -27,38 +27,51 @@ const Dashboard = () => {
   const [revenueData, setRevenueData] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState('September 2026');
+  const [error, setError] = useState('');
+  const [timeRange, setTimeRange] = useState('90');
+
+  const periodLabels = {
+    '7': 'Last 7 Days',
+    '30': 'Last 30 Days',
+    '90': 'Last 90 Days',
+    '365': 'Last 365 Days',
+  };
+
+  const fetchDashboardData = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const days = Number(timeRange) || 90;
+      const [kpiRes, aiRes, actRes, revRes, expRes] = await Promise.all([
+        getDashboardKPIs(days),
+        getAIPrimaryInsight(),
+        getRecentActivity(),
+        getMonthlyRevenue(days),
+        getExpenseBreakdown(days),
+      ]);
+      setKpis(kpiRes.data);
+      setPrimaryInsight(aiRes.data);
+      setActivities(actRes.data || []);
+      // Format revenue data for charts in ₹ Lakhs
+      const chartFormatted = (revRes.data || []).map(d => ({
+        month: d.month,
+        revenue: Number((d.revenue / 100000).toFixed(1)),
+        profit: Number((d.profit / 100000).toFixed(1)),
+        expenses: Number((d.expenses / 100000).toFixed(1)),
+      }));
+      setRevenueData(chartFormatted);
+      setExpenses(expRes.data || []);
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err);
+      setError(err.response?.data?.detail || err.message || 'Failed to load live dashboard data.');
+    } finally {
+      setLoading(false);
+    }
+  }, [timeRange]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [kpiRes, aiRes, actRes, revRes, expRes] = await Promise.all([
-          getDashboardKPIs(),
-          getAIPrimaryInsight(),
-          getRecentActivity(),
-          getMonthlyRevenue(),
-          getExpenseBreakdown(),
-        ]);
-        setKpis(kpiRes.data);
-        setPrimaryInsight(aiRes.data);
-        setActivities(actRes.data);
-        // Format revenue data for charts in ₹ Lakhs
-        const chartFormatted = (revRes.data || []).map(d => ({
-          month: d.month,
-          revenue: Number((d.revenue / 100000).toFixed(1)),
-          profit: Number((d.profit / 100000).toFixed(1)),
-          expenses: Number((d.expenses / 100000).toFixed(1)),
-        }));
-        setRevenueData(chartFormatted);
-        setExpenses(expRes.data || []);
-      } catch (err) {
-        console.error('Error fetching dashboard data:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   const handleExportSummary = () => {
     const exportRows = [
@@ -68,7 +81,7 @@ const Dashboard = () => {
       { Metric: 'Business Health', Current: kpis?.businessHealth?.value, Variance: kpis?.businessHealth?.change, Period: kpis?.businessHealth?.period },
       { Metric: 'Key Insight', Current: primaryInsight?.headline, Variance: `Confidence: ${primaryInsight?.confidence}%`, Period: primaryInsight?.sources },
     ];
-    exportToCSV(exportRows, `Business_Overview_${timeRange.replace(/\s+/g, '_')}.csv`);
+    exportToCSV(exportRows, `Business_Overview_${timeRange}D.csv`);
   };
 
   return (
@@ -79,7 +92,9 @@ const Dashboard = () => {
           <div className="flex items-center gap-2 text-xs text-light-text-muted dark:text-dark-text-muted font-normal mb-0.5">
             <span>Business overview</span>
             <span>•</span>
-            <span className="text-light-text-secondary dark:text-dark-text-secondary font-medium">{timeRange}</span>
+            <span className="text-light-text-secondary dark:text-dark-text-secondary font-medium">
+              {periodLabels[timeRange] || 'Last 90 Days'}
+            </span>
           </div>
           <h1 className="page-title">{getGreeting()}, {user?.name ? user.name.split(' ')[0] : 'Dhwanit'}</h1>
         </div>
@@ -91,10 +106,10 @@ const Dashboard = () => {
               onChange={(e) => setTimeRange(e.target.value)}
               className="filter-select pl-8"
             >
-              <option value="September 2026">September 2026</option>
-              <option value="August 2026">August 2026</option>
-              <option value="Q3 FY26">Q3 FY26</option>
-              <option value="FY 2025-26 YTD">FY 2025-26 YTD</option>
+              <option value="90">Last 90 Days</option>
+              <option value="30">Last 30 Days</option>
+              <option value="7">Last 7 Days</option>
+              <option value="365">Last 365 Days</option>
             </select>
             <FiCalendar className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-light-text-muted dark:text-dark-text-muted pointer-events-none" />
           </div>
@@ -111,33 +126,50 @@ const Dashboard = () => {
         </div>
       </div>
 
+      {/* ─── Error Notification ─── */}
+      {error && (
+        <div className="p-3 bg-danger/10 border border-danger/30 text-danger text-xs font-semibold rounded-xl flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <FiAlertCircle className="w-4 h-4 flex-shrink-0" />
+            <span>{error}</span>
+          </div>
+          <button
+            onClick={fetchDashboardData}
+            className="flex items-center gap-1 hover:underline font-bold text-xs cursor-pointer"
+          >
+            <FiRefreshCw className="w-3 h-3" />
+            <span>Retry</span>
+          </button>
+        </div>
+      )}
+
       {/* ─── Primary KPIs (4 Above the Fold) ─── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           loading={loading}
           label="Revenue"
-          value={kpis?.revenue?.value ?? '₹24.8L'}
-          change={kpis?.revenue?.change ?? '+12.4%'}
-          trend={kpis?.revenue?.trend ?? 'up'}
-          period={kpis?.revenue?.period ?? 'vs last month'}
+          value={kpis?.revenue?.value ?? '₹0'}
+          change={kpis?.revenue?.change ?? '0.0%'}
+          trend={kpis?.revenue?.trend ?? 'neutral'}
+          period={kpis?.revenue?.period ?? `vs prior ${timeRange} days`}
           tooltip="Gross billings settled across regional business accounts"
         />
         <StatCard
           loading={loading}
           label="Profit"
-          value={kpis?.profit?.value ?? '₹6.4L'}
-          change={kpis?.profit?.change ?? '+8.7%'}
-          trend={kpis?.profit?.trend ?? 'up'}
-          period={kpis?.profit?.period ?? 'vs last month'}
+          value={kpis?.profit?.value ?? '₹0'}
+          change={kpis?.profit?.change ?? '0.0%'}
+          trend={kpis?.profit?.trend ?? 'neutral'}
+          period={kpis?.profit?.period ?? `vs prior ${timeRange} days`}
           tooltip="Operating profit after fulfillment, taxes, and vendor deductions"
         />
         <StatCard
           loading={loading}
           label="Expenses"
-          value={kpis?.expenses?.value ?? '₹18.4L'}
-          change={kpis?.expenses?.change ?? '+3.2%'}
-          trend={kpis?.expenses?.trend ?? 'down'}
-          period={kpis?.expenses?.period ?? 'vs last month'}
+          value={kpis?.expenses?.value ?? '₹0'}
+          change={kpis?.expenses?.change ?? '0.0%'}
+          trend={kpis?.expenses?.trend ?? 'neutral'}
+          period={kpis?.expenses?.period ?? `vs prior ${timeRange} days`}
           tooltip="Total expenditures including cloud infrastructure, transit, and payroll"
         />
         <StatCard
@@ -205,6 +237,10 @@ const Dashboard = () => {
           <div className="h-[280px] w-full min-h-[280px]">
             {loading ? (
               <div className="h-full rounded-lg shimmer" />
+            ) : revenueData.length === 0 || revenueData.every(d => d.revenue === 0 && d.profit === 0) ? (
+              <div className="h-full flex items-center justify-center text-xs text-light-text-muted dark:text-dark-text-muted">
+                No financial transactions recorded for this period.
+              </div>
             ) : (
               <AreaChartWidget
                 data={revenueData}
@@ -229,16 +265,20 @@ const Dashboard = () => {
                   Operational Expenditure
                 </h4>
               </div>
-              <Badge variant="neutral">₹18.4L</Badge>
+              <Badge variant="neutral">{kpis?.expenses?.value || '₹0'}</Badge>
             </div>
             <div className="h-[220px] min-h-[220px] flex-1">
               {loading ? (
                 <div className="h-full rounded-lg shimmer" />
+              ) : expenses.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-xs text-light-text-muted dark:text-dark-text-muted">
+                  No expense records for this period.
+                </div>
               ) : (
                 <DonutChartWidget
                   data={expenses}
-                  centerLabel="Monthly Spend"
-                  centerValue="₹18.4L"
+                  centerLabel="Period Spend"
+                  centerValue={kpis?.expenses?.value || '₹0'}
                 />
               )}
             </div>
@@ -272,6 +312,10 @@ const Dashboard = () => {
                     <div className="h-3 w-16 rounded shimmer" />
                   </div>
                 ))
+              ) : activities.length === 0 ? (
+                <div className="py-8 text-center text-xs text-light-text-muted dark:text-dark-text-muted">
+                  No recent commercial events recorded for this period.
+                </div>
               ) : (
                 activities.slice(0, 5).map((a) => (
                   <div key={a.id} className="py-2.5 flex items-center justify-between gap-3 text-xs">

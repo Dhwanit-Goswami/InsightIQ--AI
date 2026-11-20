@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone, date
 from decimal import Decimal
 from typing import Dict, Any, List
 from sqlalchemy import func, desc, and_, case
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.models.sale import Sale
 from app.models.sale_item import SaleItem
@@ -44,7 +44,8 @@ class AnalyticsService:
         curr_rev = db.query(func.coalesce(func.sum(Sale.total_amount), Decimal("0.00"))).filter(
             Sale.company_id == company_id,
             Sale.status == "completed",
-            Sale.sale_date >= curr_start
+            Sale.sale_date >= curr_start,
+            Sale.sale_date <= now
         ).scalar() or Decimal("0.00")
 
         prev_rev = db.query(func.coalesce(func.sum(Sale.total_amount), Decimal("0.00"))).filter(
@@ -62,7 +63,8 @@ class AnalyticsService:
         curr_exp = db.query(func.coalesce(func.sum(Expense.amount), Decimal("0.00"))).filter(
             Expense.company_id == company_id,
             Expense.status == "paid",
-            Expense.expense_date >= curr_start.date()
+            Expense.expense_date >= curr_start.date(),
+            Expense.expense_date <= now.date()
         ).scalar() or Decimal("0.00")
 
         prev_exp = db.query(func.coalesce(func.sum(Expense.amount), Decimal("0.00"))).filter(
@@ -89,16 +91,47 @@ class AnalyticsService:
         order_count = db.query(func.count(Sale.id)).filter(
             Sale.company_id == company_id,
             Sale.status == "completed",
-            Sale.sale_date >= curr_start
+            Sale.sale_date >= curr_start,
+            Sale.sale_date <= now
         ).scalar() or 0
 
         aov = (curr_rev / Decimal(str(order_count))).quantize(Decimal("0.01")) if order_count > 0 else Decimal("0.00")
 
-        # ── 5. CUSTOMERS ──
+        # ── 5. CUSTOMERS (real growth vs prior period) ──
         total_customers = db.query(func.count(Customer.id)).filter(
             Customer.company_id == company_id,
             Customer.is_active == True
         ).scalar() or 0
+
+        # New customers created within current period
+        new_customers_curr = db.query(func.count(Customer.id)).filter(
+            Customer.company_id == company_id,
+            Customer.created_at >= curr_start,
+            Customer.created_at <= now
+        ).scalar() or 0
+
+        # New customers created within prior period
+        new_customers_prev = db.query(func.count(Customer.id)).filter(
+            Customer.company_id == company_id,
+            Customer.created_at >= prev_start,
+            Customer.created_at < curr_start
+        ).scalar() or 0
+
+        customer_growth = 0.0
+        if new_customers_prev > 0:
+            customer_growth = round(float((new_customers_curr - new_customers_prev) / new_customers_prev * 100), 1)
+
+        # ── 5b. ORDERS growth (prior period) ──
+        prev_order_count = db.query(func.count(Sale.id)).filter(
+            Sale.company_id == company_id,
+            Sale.status == "completed",
+            Sale.sale_date >= prev_start,
+            Sale.sale_date < curr_start
+        ).scalar() or 0
+
+        order_growth = 0.0
+        if prev_order_count > 0:
+            order_growth = round(float((order_count - prev_order_count) / prev_order_count * 100), 1)
 
         # ── 6. INVENTORY & STOCKOUTS ──
         inventory_valuation = db.query(
@@ -120,12 +153,14 @@ class AnalyticsService:
         # ── 7. MONTHLY REVENUE & EXPENSE TREND (PAST 6 MONTHS) ──
         monthly_trend = []
         for i in range(5, -1, -1):
-            m_start = (now.replace(day=1) - timedelta(days=i * 30)).replace(day=1)
-            # next month start
-            if m_start.month == 12:
-                m_end = m_start.replace(year=m_start.year + 1, month=1)
+            month_offset = now.month - 1 - i
+            year = now.year + (month_offset // 12)
+            month = (month_offset % 12) + 1
+            m_start = datetime(year, month, 1, tzinfo=timezone.utc)
+            if month == 12:
+                m_end = datetime(year + 1, 1, 1, tzinfo=timezone.utc)
             else:
-                m_end = m_start.replace(month=m_start.month + 1)
+                m_end = datetime(year, month + 1, 1, tzinfo=timezone.utc)
 
             month_label = m_start.strftime("%b")
 
@@ -147,7 +182,8 @@ class AnalyticsService:
                 "month": month_label,
                 "revenue": m_rev,
                 "expenses": m_exp,
-                "net_profit": m_rev - m_exp
+                "net_profit": m_rev - m_exp,
+                "profit": m_rev - m_exp
             })
 
         # ── 8. EXPENSE CATEGORY BREAKDOWN ──
@@ -157,7 +193,8 @@ class AnalyticsService:
         ).filter(
             Expense.company_id == company_id,
             Expense.status == "paid",
-            Expense.expense_date >= curr_start.date()
+            Expense.expense_date >= curr_start.date(),
+            Expense.expense_date <= now.date()
         ).group_by(Expense.category).order_by(desc("total")).all()
 
         total_cat_exp = sum(r[1] for r in category_rows) if category_rows else Decimal("1.00")
@@ -182,22 +219,40 @@ class AnalyticsService:
         ).filter(
             Product.company_id == company_id,
             Sale.status == "completed",
-            Sale.sale_date >= curr_start
+            Sale.sale_date >= curr_start,
+            Sale.sale_date <= now
         ).group_by(Product.id, Product.name, Product.sku).order_by(desc("revenue")).limit(5).all()
 
-        top_products = [
-            {
-                "id": str(r[0]),
+        top_products = []
+        for r in top_product_rows:
+            prod_id = r[0]
+            prod_rev = r[4] or Decimal("0.00")
+            prev_prod_rev = db.query(func.coalesce(func.sum(SaleItem.total_amount), Decimal("0.00"))).join(
+                Sale, Sale.id == SaleItem.sale_id
+            ).filter(
+                SaleItem.product_id == prod_id,
+                Sale.status == "completed",
+                Sale.sale_date >= prev_start,
+                Sale.sale_date < curr_start
+            ).scalar() or Decimal("0.00")
+
+            prod_growth = None
+            if prev_prod_rev > Decimal("0.00"):
+                prod_growth = round(float((prod_rev - prev_prod_rev) / prev_prod_rev * Decimal("100.00")), 1)
+
+            top_products.append({
+                "id": str(prod_id),
                 "name": r[1],
                 "sku": r[2],
                 "units_sold": r[3],
-                "revenue": r[4]
-            }
-            for r in top_product_rows
-        ]
+                "revenue": prod_rev,
+                "growth": prod_growth
+            })
 
         # ── 10. RECENT SALES ORDERS ──
-        recent_sale_records = db.query(Sale).filter(
+        recent_sale_records = db.query(Sale).options(
+            joinedload(Sale.customer)
+        ).filter(
             Sale.company_id == company_id
         ).order_by(desc(Sale.sale_date)).limit(8).all()
 
@@ -247,16 +302,16 @@ class AnalyticsService:
                 "customers": {
                     "value": Decimal(str(total_customers)),
                     "formatted_value": str(total_customers),
-                    "change_pct": 8.5,
-                    "trend": "up",
-                    "is_positive": True
+                    "change_pct": customer_growth,
+                    "trend": "up" if customer_growth >= 0 else "down",
+                    "is_positive": customer_growth >= 0
                 },
                 "orders": {
                     "value": Decimal(str(order_count)),
                     "formatted_value": str(order_count),
-                    "change_pct": 12.0,
-                    "trend": "up",
-                    "is_positive": True
+                    "change_pct": order_growth,
+                    "trend": "up" if order_growth >= 0 else "down",
+                    "is_positive": order_growth >= 0
                 },
                 "average_order_value": {
                     "value": aov,

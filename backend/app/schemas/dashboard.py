@@ -16,6 +16,7 @@ class MonthlyRevenuePoint(BaseModel):
     revenue: Decimal
     expenses: Decimal
     net_profit: Decimal
+    profit: Optional[Decimal] = None
 
 
 class ExpenseCategoryBreakdown(BaseModel):
@@ -30,6 +31,7 @@ class TopProductItem(BaseModel):
     sku: str
     units_sold: Decimal
     revenue: Decimal
+    growth: Optional[float] = None
 
 
 class RecentSaleItem(BaseModel):

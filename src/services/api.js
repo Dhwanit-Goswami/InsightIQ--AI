@@ -475,6 +475,24 @@ export const sendAIMessage = async (message) => {
       sources: dataNote,
       confidence: confidenceNote,
     };
+  } else if (q.includes('focus') || q.includes('week') || q.includes('recommend') || q.includes('strategy')) {
+    let topRec = 'Prioritize collection on pending invoices and restock fast-moving items.';
+    try {
+      const insRes = await api.get('/insights');
+      const ins = insRes.data?.[0];
+      if (ins?.recommendations?.[0]?.action) {
+        topRec = ins.recommendations[0].action;
+      }
+    } catch {}
+
+    structuredResponse = {
+      answer: `Immediate priority: ${topRec}`,
+      evidence: `• Current 90-day operating status:\n• Revenue: ${revVal !== null ? fmtINR(revVal) : 'N/A'}\n• Net profit margin: ${marginVal !== null ? `${marginVal.toFixed(1)}%` : 'N/A'}\n• Completed orders: ${orderCount !== null ? orderCount : 'N/A'}\n• Customer growth: ${liveKpis?.customers?.change_pct != null ? `${liveKpis.customers.change_pct}%` : 'N/A'}`,
+      explanation: 'Recommendations are derived from the InsightIQ pattern identification engine, correlating revenue trajectory, margin risk, and inventory thresholds from your database.',
+      recommendation: `1. Execute priority action: ${topRec}\n2. Verify inventory buffers for high-velocity SKUs on the Inventory page.\n3. Track weekly conversion in Analytics overview.`,
+      sources: dataNote,
+      confidence: confidenceNote,
+    };
   } else {
     structuredResponse = {
       answer: `Analysis for: "${message}". ${liveKpis ? `Current 90-day snapshot: revenue ${fmtINR(revVal)}, net profit ${fmtINR(profitVal)}, ${orderCount} orders, ${custCount} active customers.` : 'Business metrics indicate healthy operating stability.'}`,
@@ -562,18 +580,56 @@ export const getCompanyData = async () => {
   if (!user?.company_id) return { data: companyData };
   const compRes = await api.get(`/companies/${user.company_id}`);
   const comp = compRes.data;
+
+  // Retrieve actual employee count and annual overview if available
+  let employeeCount = 0;
+  let departmentList = [];
+  try {
+    const empRes = await api.get('/employees');
+    const emps = Array.isArray(empRes.data) ? empRes.data : [];
+    employeeCount = emps.length;
+    if (emps.length > 0) {
+      const deptMap = {};
+      emps.forEach(e => {
+        const d = e.department || 'Operations';
+        deptMap[d] = (deptMap[d] || 0) + 1;
+      });
+      departmentList = Object.entries(deptMap).map(([name, count]) => ({
+        name,
+        headcount: `${count} Member${count > 1 ? 's' : ''}`,
+        lead: 'Department Head',
+        budget: 'Allocated'
+      }));
+    }
+  } catch {
+    // Non-blocking fallback
+  }
+
+  let annualRevenueFormatted = '₹0';
+  try {
+    const ovRes = await api.get('/dashboard/overview', { params: { days: 365 } });
+    if (ovRes.data?.kpis?.revenue?.formatted_value) {
+      annualRevenueFormatted = ovRes.data.kpis.revenue.formatted_value;
+    }
+  } catch {
+    // Non-blocking
+  }
+
   const hq = [comp.address, comp.city, comp.state].filter(Boolean).join(', ');
   return {
     data: {
-      ...companyData,
       ...comp,
-      tier: comp.tier || companyData.tier,
-      tagline: comp.tagline || companyData.tagline,
-      description: comp.description || companyData.description,
-      headquarters: hq || companyData.headquarters,
-      departments: comp.departments || companyData.departments,
-      goals: comp.goals || companyData.goals,
-      revenue: comp.revenue || companyData.revenue,
+      tier: comp.tier || 'Enterprise',
+      tagline: comp.tagline || `${comp.industry || 'Business'} Intelligence Platform`,
+      description: comp.description || `Registered corporate entity in ${comp.city || 'India'}, operating under jurisdiction ${comp.country || 'India'}.`,
+      headquarters: hq || `${comp.city || 'HQ'}, ${comp.country || 'India'}`,
+      employees: employeeCount,
+      annualRevenue: annualRevenueFormatted,
+      departments: departmentList.length > 0 ? departmentList : (comp.departments || []),
+      goals: comp.goals || [
+        { id: 1, title: 'Revenue Growth & Scale', progress: 75, deadline: 'Q4 FY26', status: 'in-progress' },
+        { id: 2, title: 'Margin Optimization & Cost Control', progress: 85, deadline: 'Q3 FY26', status: 'in-progress' }
+      ],
     }
   };
 };
@@ -614,6 +670,10 @@ export const getUserProfile = async () => {
   };
 };
 
+export const updateUserProfile = async (profileData) => {
+  return api.put('/users/me', profileData);
+};
+
 // ─── Customers ───────────────────────────────────────
 export const getCustomers = async (params = {}) => {
   if (isDemoMode) return { data: [] };
@@ -626,6 +686,37 @@ export const createCustomer = async (customerData) => {
   return api.post('/customers', customerData);
 };
 
+export const updateCustomer = async (customerId, customerData) => {
+  return api.put(`/customers/${customerId}`, customerData);
+};
+
+export const deleteCustomer = async (customerId) => {
+  return api.delete(`/customers/${customerId}`);
+};
+
+// ─── Products & Inventory ────────────────────────────
+export const getProducts = async (params = {}) => {
+  if (isDemoMode) return { data: [] };
+  const res = await api.get('/products', { params });
+  const items = Array.isArray(res.data?.items) ? res.data.items : (Array.isArray(res.data) ? res.data : []);
+  return { data: items };
+};
+
+export const createProduct = async (productData, options = {}) => {
+  return api.post('/products', productData, { params: options });
+};
+
+export const getInventory = async (params = {}) => {
+  if (isDemoMode) return { data: [] };
+  const res = await api.get('/inventory', { params });
+  const items = Array.isArray(res.data?.items) ? res.data.items : (Array.isArray(res.data) ? res.data : []);
+  return { data: items };
+};
+
+export const updateStock = async (inventoryId, updateData) => {
+  return api.put(`/inventory/${inventoryId}`, updateData);
+};
+
 // ─── Sales ───────────────────────────────────────────
 export const getSales = async (params = {}) => {
   if (isDemoMode) return { data: [] };
@@ -634,12 +725,8 @@ export const getSales = async (params = {}) => {
   return { data: items };
 };
 
-// ─── Inventory ───────────────────────────────────────
-export const getInventory = async (params = {}) => {
-  if (isDemoMode) return { data: [] };
-  const res = await api.get('/inventory', { params });
-  const items = Array.isArray(res.data?.items) ? res.data.items : (Array.isArray(res.data) ? res.data : []);
-  return { data: items };
+export const createSale = async (saleData) => {
+  return api.post('/sales', saleData);
 };
 
 // ─── Expenses ────────────────────────────────────────
@@ -648,6 +735,14 @@ export const getExpenses = async (params = {}) => {
   const res = await api.get('/expenses', { params });
   const items = Array.isArray(res.data?.items) ? res.data.items : (Array.isArray(res.data) ? res.data : []);
   return { data: items };
+};
+
+export const createExpense = async (expenseData) => {
+  return api.post('/expenses', expenseData);
+};
+
+export const deleteExpense = async (expenseId) => {
+  return api.delete(`/expenses/${expenseId}`);
 };
 
 // ─── Register ────────────────────────────────────────

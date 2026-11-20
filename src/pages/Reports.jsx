@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getReports, createReport } from '../services/api';
+import { getReports, createReport, getSales, getInventory, getExpenses, getDashboardKPIs } from '../services/api';
 import Card from '../components/ui/Card';
 import Table from '../components/ui/Table';
 import SearchBar from '../components/ui/SearchBar';
@@ -52,20 +52,68 @@ const Reports = () => {
     setTimeout(() => setToastMessage(''), 3500);
   };
 
-  const handleDownload = (report) => {
+  const handleDownload = async (report) => {
     const reportTitle = report.name || report.title || 'Executive_Audit_Report';
-    const sampleAuditData = [
-      { Parameter: 'Report Document', Value: reportTitle },
-      { Parameter: 'Document Type', Value: report.type || 'Audit' },
-      { Parameter: 'Fiscal Period', Value: report.period || 'Q3 FY26' },
-      { Parameter: 'Last Updated', Value: report.lastUpdated || 'Recent' },
-      { Parameter: 'Gross Volume Verified', Value: '₹1,42,00,000' },
-      { Parameter: 'Operating Margin', Value: '26.2%' },
-      { Parameter: 'GST Filing Compliance', Value: '100% Reconciled (GSTR-1 & 3B)' },
-      { Parameter: 'Entity', Value: 'Enterprise Account' },
-    ];
-    exportToCSV(sampleAuditData, `${reportTitle.replace(/[^a-zA-Z0-9]/g, '_')}.csv`);
-    showToast(`Downloaded: ${reportTitle}`);
+    showToast(`Preparing ${reportTitle} for export…`);
+    try {
+      const type = (report.type || report.report_type || '').toLowerCase();
+      let csvRows = [];
+      if (type.includes('sale') || type.includes('revenue')) {
+        const salesRes = await getSales({ limit: 100 });
+        const list = salesRes.data || [];
+        csvRows = list.map(s => ({
+          'Invoice Number': s.invoice_number,
+          'Date': s.sale_date ? new Date(s.sale_date).toLocaleDateString('en-IN') : '',
+          'Client': s.customer?.name || 'Walk-in Client',
+          'Gross Total': s.total_amount,
+          'Payment Channel': s.payment_method,
+          'Status': s.status
+        }));
+      } else if (type.includes('invent') || type.includes('asset')) {
+        const invRes = await getInventory({ limit: 100 });
+        const list = invRes.data || [];
+        csvRows = list.map(i => ({
+          'SKU': i.product?.sku,
+          'Item Name': i.product?.name,
+          'Category': i.product?.category,
+          'Quantity Available': i.quantity,
+          'Unit Price': i.product?.selling_price,
+          'Warehouse': i.warehouse_location
+        }));
+      } else if (type.includes('expens') || type.includes('cost')) {
+        const expRes = await getExpenses({ limit: 100 });
+        const list = expRes.data || [];
+        csvRows = list.map(e => ({
+          'Date': e.expense_date,
+          'Description': e.description,
+          'Category': e.category,
+          'Amount': e.amount,
+          'Status': e.status
+        }));
+      } else {
+        const ovRes = await getDashboardKPIs(90);
+        const kpis = ovRes.data || {};
+        csvRows = [
+          { 'Metric': 'Report Document', 'Value': reportTitle },
+          { 'Metric': 'Report Classification', 'Value': report.type || 'Executive Audit' },
+          { 'Metric': 'Reporting Window', 'Value': report.period || 'Q3 FY26' },
+          { 'Metric': 'Generated At', 'Value': report.lastUpdated || new Date().toLocaleDateString('en-IN') },
+          { 'Metric': 'Consolidated Revenue (90d)', 'Value': kpis.revenue?.value || '₹0' },
+          { 'Metric': 'Revenue Trend', 'Value': kpis.revenue?.change || '0%' },
+          { 'Metric': 'Operating Expenses (90d)', 'Value': kpis.expenses?.value || '₹0' },
+          { 'Metric': 'Net Profit (90d)', 'Value': kpis.profit?.value || '₹0' },
+          { 'Metric': 'Active Commercial Customers', 'Value': kpis.customers?.value || '0' },
+          { 'Metric': 'Total Orders Completed', 'Value': kpis.orders?.value || '0' },
+          { 'Metric': 'Inventory Valuation', 'Value': kpis.inventory?.period || '₹0' },
+          { 'Metric': 'Status', 'Value': report.status || 'Verified' }
+        ];
+      }
+      exportToCSV(csvRows, `${reportTitle.replace(/[^a-zA-Z0-9]/g, '_')}.csv`);
+      showToast(`Exported: ${reportTitle}.csv`);
+    } catch (err) {
+      console.error('Error exporting report:', err);
+      showToast(`Export failed for ${reportTitle}`);
+    }
   };
 
   const handleShare = (report) => {

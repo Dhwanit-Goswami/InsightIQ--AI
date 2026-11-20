@@ -8,9 +8,9 @@ import Input from '../components/ui/Input';
 import StatCard from '../components/ui/StatCard';
 import SearchBar from '../components/ui/SearchBar';
 import { DonutChartWidget } from '../components/charts/Charts';
-import { FiPlus, FiDownload } from 'react-icons/fi';
+import { FiPlus, FiDownload, FiEdit2 } from 'react-icons/fi';
 import { exportToCSV } from '../utils/exportUtils';
-import { getInventory } from '../services/api';
+import { getInventory, createProduct, updateStock } from '../services/api';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 const formatINR = (value) => {
@@ -58,9 +58,13 @@ const buildDistribution = (items) => {
 const Inventory = () => {
   const [stockItems, setStockItems]   = useState([]);
   const [loading, setLoading]         = useState(true);
+  const [saving, setSaving]           = useState(false);
   const [error, setError]             = useState('');
+  const [formError, setFormError]     = useState('');
   const [search, setSearch]           = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+  const [editQty, setEditQty]         = useState('');
   const [formData, setFormData]       = useState({
     name: '', category: 'POS Hardware', stock: '', price: '', status: 'In Stock',
   });
@@ -72,20 +76,21 @@ const Inventory = () => {
     { name: 'No Data', value: 100, color: '#94a3b8' },
   ];
 
+  const fetchInventory = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await getInventory();
+      setStockItems((res.data || []).map(mapInventoryItem));
+    } catch (err) {
+      setError('Unable to load inventory data. Please try again.');
+      console.error('[Inventory] fetch error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchInventory = async () => {
-      setLoading(true);
-      setError('');
-      try {
-        const res = await getInventory();
-        setStockItems((res.data || []).map(mapInventoryItem));
-      } catch (err) {
-        setError('Unable to load inventory data. Please try again.');
-        console.error('[Inventory] fetch error:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchInventory();
   }, []);
 
@@ -102,26 +107,58 @@ const Inventory = () => {
     exportToCSV(exportData, `Asset_Inventory_${new Date().toISOString().slice(0, 10)}.csv`);
   };
 
-  const handleAddItem = (e) => {
+  const handleAddItem = async (e) => {
     e.preventDefault();
     if (!formData.name || !formData.price) return;
-    const formattedPrice = formData.price.startsWith('₹') ? formData.price : `₹${formData.price}`;
-    const qty = parseInt(formData.stock, 10) || 1;
-    const newItem = {
-      _id:      `local-${Date.now()}`,
-      sku:      `SKU-${Math.floor(1000 + Math.random() * 9000)}`,
-      name:     formData.name,
-      category: formData.category,
-      stock:    qty,
-      price:    formattedPrice,
-      status:   formData.status,
-      reorder:  10,
-      location: 'Main Hub',
-      rawPrice: 0,
-    };
-    setStockItems([newItem, ...stockItems]);
-    setIsModalOpen(false);
-    setFormData({ name: '', category: 'POS Hardware', stock: '', price: '', status: 'In Stock' });
+    setSaving(true);
+    setFormError('');
+
+    try {
+      const cleanPrice = Number(formData.price.replace(/[₹,LCr ]/g, '')) || 0;
+      const qty = parseInt(formData.stock, 10) || 1;
+      const sku = `SKU-${Date.now().toString().slice(-4)}`;
+
+      await createProduct(
+        {
+          name: formData.name,
+          sku: sku,
+          category: formData.category,
+          selling_price: cleanPrice,
+          cost_price: Math.round(cleanPrice * 0.7),
+          unit: 'pcs',
+        },
+        {
+          initial_stock: qty,
+          reorder_level: 10
+        }
+      );
+      await fetchInventory();
+      setIsModalOpen(false);
+      setFormData({ name: '', category: 'POS Hardware', stock: '', price: '', status: 'In Stock' });
+    } catch (err) {
+      console.error('[Inventory] create error:', err);
+      setFormError(err.response?.data?.detail || 'Failed to add product. Please check inputs.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUpdateStock = async (e) => {
+    e.preventDefault();
+    if (!editingItem) return;
+    setSaving(true);
+    try {
+      await updateStock(editingItem._id, {
+        quantity: Number(editQty),
+      });
+      await fetchInventory();
+      setEditingItem(null);
+    } catch (err) {
+      console.error('[Inventory] update error:', err);
+      alert(err.response?.data?.detail || 'Failed to update stock quantity.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const filteredItems = stockItems.filter(item =>
@@ -154,6 +191,23 @@ const Inventory = () => {
         <Badge variant={s === 'In Stock' ? 'success' : 'warning'} dot>
           {s}
         </Badge>
+      ),
+    },
+    {
+      key: 'actions',
+      label: 'Stock Action',
+      render: (_, item) => (
+        <button
+          type="button"
+          onClick={() => {
+            setEditingItem(item);
+            setEditQty(String(item.stock));
+          }}
+          className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-semibold cursor-pointer"
+        >
+          <FiEdit2 className="w-3 h-3" />
+          <span>Adjust Stock</span>
+        </button>
       ),
     },
   ];
@@ -286,6 +340,12 @@ const Inventory = () => {
         size="md"
       >
         <form onSubmit={handleAddItem} className="space-y-4">
+          {formError && (
+            <div className="p-2.5 bg-danger/10 border border-danger/30 text-danger text-xs font-semibold rounded-lg">
+              {formError}
+            </div>
+          )}
+
           <Input
             label="Item Description / Name"
             placeholder="e.g. Dedicated Enterprise Node v2"
@@ -326,7 +386,7 @@ const Inventory = () => {
           <div className="grid grid-cols-2 gap-3">
             <Input
               label="Unit Rate (₹)"
-              placeholder="e.g. ₹24,000"
+              placeholder="e.g. 24000"
               value={formData.price}
               onChange={(e) => setFormData({ ...formData, price: e.target.value })}
               required
@@ -351,8 +411,37 @@ const Inventory = () => {
             <Button type="button" variant="secondary" size="sm" onClick={() => setIsModalOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" variant="primary" size="sm">
+            <Button type="submit" variant="primary" size="sm" loading={saving}>
               Save Item
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ─── Adjust Stock Modal ─── */}
+      <Modal
+        isOpen={Boolean(editingItem)}
+        onClose={() => setEditingItem(null)}
+        title="Adjust Stock Level"
+        subtitle={`Update on-hand quantity for ${editingItem?.name || 'Item'}`}
+        size="sm"
+      >
+        <form onSubmit={handleUpdateStock} className="space-y-4">
+          <Input
+            label="Current Available Stock (Units)"
+            type="number"
+            value={editQty}
+            onChange={(e) => setEditQty(e.target.value)}
+            required
+            min="0"
+          />
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="secondary" size="sm" onClick={() => setEditingItem(null)}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary" size="sm" loading={saving}>
+              Update Stock
             </Button>
           </div>
         </form>

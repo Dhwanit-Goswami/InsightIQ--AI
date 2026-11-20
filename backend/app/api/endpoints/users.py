@@ -47,6 +47,31 @@ def create_user(
     return UserResponse.model_validate(new_user)
 
 
+@router.put("/me", response_model=UserResponse)
+def update_current_user(
+    payload: UserUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update authenticated user's own profile."""
+    data = payload.model_dump(exclude_unset=True)
+    # Prevent self-escalating role or changing is_active unless owner/admin
+    if "role" in data and current_user.role not in ["owner", "admin"]:
+        del data["role"]
+    if "is_active" in data and current_user.role not in ["owner", "admin"]:
+        del data["is_active"]
+
+    if "password" in data and data["password"]:
+        current_user.password_hash = hash_password(data.pop("password"))
+
+    for k, v in data.items():
+        setattr(current_user, k, v)
+
+    db.commit()
+    db.refresh(current_user)
+    return UserResponse.model_validate(current_user)
+
+
 @router.get("/{user_id}", response_model=UserResponse)
 def get_user_by_id(
     user_id: uuid.UUID,

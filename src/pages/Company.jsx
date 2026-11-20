@@ -37,11 +37,11 @@ const Company = () => {
       sortable: true,
       render: (n) => <span className="font-medium text-light-text-primary dark:text-dark-text-primary">{n}</span>,
     },
-    { key: 'headcount', label: 'Headcount', sortable: true },
-    { key: 'lead', label: 'Department Head', sortable: true },
+    { key: 'headcount', label: 'Staff Count', sortable: true },
+    { key: 'lead', label: 'Lead / Responsibility', sortable: true },
     {
       key: 'budget',
-      label: 'Annual Operating Budget',
+      label: 'Operational Status',
       sortable: true,
       render: (b) => <span className="font-semibold text-light-text-primary dark:text-dark-text-primary">{b}</span>,
     },
@@ -106,25 +106,25 @@ const Company = () => {
       {/* ─── Organization Summary KPIs ─── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard
-          label="Total Headcount"
-          value={`${company?.employees ?? 247} Team Members`}
-          change="+8 this quarter"
-          trend="up"
-          period="across 7 functional departments"
+          label="Active Headcount"
+          value={company?.employees ? `${company.employees} Team Members` : 'Active Workspace'}
+          change={company?.employees ? 'verified on payroll' : 'registered staff'}
+          trend="neutral"
+          period="across organization"
         />
         <StatCard
-          label="Annual Run Rate (ARR)"
-          value={company?.revenue?.annual ?? '₹4.82Cr'}
-          change="+18.4%"
+          label="Annual Invoiced Volume"
+          value={company?.annualRevenue || '₹0'}
+          change="past 365 days"
           trend="up"
-          period="audited consolidated ARR"
+          period="transactional sales ledger"
         />
         <StatCard
           label="Fiscal Jurisdiction"
-          value="INR (₹) • FY 25-26"
-          change="GST Active"
+          value={`${company?.currency || 'INR'} (₹) • ${company?.country || 'India'}`}
+          change="Registered"
           trend="neutral"
-          period="MCA Registered Entity"
+          period={company?.timezone || 'Asia/Kolkata'}
         />
       </div>
 

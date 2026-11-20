@@ -10,7 +10,7 @@ import SearchBar from '../components/ui/SearchBar';
 import { BarChartWidget } from '../components/charts/Charts';
 import { FiPlus, FiDownload } from 'react-icons/fi';
 import { exportToCSV } from '../utils/exportUtils';
-import { getSales } from '../services/api';
+import { getSales, createSale, getProducts, getCustomers } from '../services/api';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 const formatINR = (value) => {
@@ -55,12 +55,16 @@ const mapSale = (s) => ({
 // ── component ─────────────────────────────────────────────────────────────────
 const Sales = () => {
   const [salesHistory, setSalesHistory]   = useState([]);
+  const [availableProducts, setAvailableProducts] = useState([]);
+  const [availableCustomers, setAvailableCustomers] = useState([]);
   const [loading, setLoading]             = useState(true);
+  const [saving, setSaving]               = useState(false);
   const [error, setError]                 = useState('');
+  const [formError, setFormError]         = useState('');
   const [search, setSearch]               = useState('');
   const [isModalOpen, setIsModalOpen]     = useState(false);
   const [formData, setFormData]           = useState({
-    customer: '', items: '', total: '', method: 'NEFT Transfer', status: 'Settled',
+    customerId: '', productId: '', customer: '', items: '', total: '', quantity: '1', method: 'NEFT Transfer', status: 'Settled',
   });
 
   // Derived stats from real data
@@ -69,30 +73,27 @@ const Sales = () => {
   const pendingCount = salesHistory.filter(r => r.rawStatus === 'pending').length;
   const avgDeal = salesHistory.length ? totalRevenue / salesHistory.length : 0;
 
-  // Static 6-month velocity chart — kept as-is (chart data would need separate analytics call)
-  const chartData = [
-    { month: 'Apr', sales: 95 },
-    { month: 'May', sales: 110 },
-    { month: 'Jun', sales: 124 },
-    { month: 'Jul', sales: 138 },
-    { month: 'Aug', sales: 152 },
-    { month: 'Sep', sales: salesHistory.length },
-  ];
+  const fetchSales = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const [res, prodRes, custRes] = await Promise.all([
+        getSales({ limit: 200 }),
+        getProducts({ limit: 100 }).catch(() => ({ data: [] })),
+        getCustomers({ limit: 100 }).catch(() => ({ data: [] })),
+      ]);
+      setSalesHistory((res.data || []).map(mapSale));
+      setAvailableProducts(prodRes.data || []);
+      setAvailableCustomers(custRes.data || []);
+    } catch (err) {
+      setError('Unable to load sales data. Please try again.');
+      console.error('[Sales] fetch error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchSales = async () => {
-      setLoading(true);
-      setError('');
-      try {
-        const res = await getSales({ limit: 200 });
-        setSalesHistory((res.data || []).map(mapSale));
-      } catch (err) {
-        setError('Unable to load sales data. Please try again.');
-        console.error('[Sales] fetch error:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchSales();
   }, []);
 
@@ -109,26 +110,65 @@ const Sales = () => {
     exportToCSV(exportData, `Sales_Journal_${new Date().toISOString().slice(0, 10)}.csv`);
   };
 
-  // Modal: local-only (no POST endpoint needed for audit)
-  const handleAddSale = (e) => {
+  const handleAddSale = async (e) => {
     e.preventDefault();
-    if (!formData.customer || !formData.total) return;
-    const formattedTotal = formData.total.startsWith('₹') ? formData.total : `₹${formData.total}`;
-    const newSale = {
-      _id:      `local-${Date.now()}`,
-      date:     new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-      id:       `INV-LOCAL-${Math.floor(1000 + Math.random() * 9000)}`,
-      customer: formData.customer,
-      items:    formData.items || 'Standard Solution Pack ×1',
-      total:    formattedTotal,
-      method:   formData.method,
-      status:   formData.status,
-      rawTotal: 0,
-      rawStatus: formData.status === 'Settled' ? 'completed' : 'pending',
-    };
-    setSalesHistory([newSale, ...salesHistory]);
-    setIsModalOpen(false);
-    setFormData({ customer: '', items: '', total: '', method: 'NEFT Transfer', status: 'Settled' });
+    if (!formData.total) return;
+    setSaving(true);
+    setFormError('');
+
+    try {
+      const rawNum = Number(String(formData.total).replace(/[₹,LCr ]/g, '')) || 0;
+      const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
+      
+      const selectedProd = availableProducts.find(p => p.id === formData.productId) || availableProducts[0];
+      const prodId = selectedProd?.id;
+      if (!prodId) {
+        setFormError('No products registered in the database. Please add a product in Inventory first.');
+        setSaving(false);
+        return;
+      }
+
+      const qty = Number(formData.quantity) || 1;
+      const unitPrice = rawNum > 0 ? (rawNum / qty).toFixed(2) : (Number(selectedProd?.selling_price) || 100);
+
+      const methodMap = {
+        'NEFT Transfer': 'bank_transfer',
+        'RTGS Transfer': 'bank_transfer',
+        'Corporate NetBanking': 'bank_transfer',
+        'UPI': 'upi',
+        'Card': 'card',
+        'Cash': 'cash',
+      };
+      const paymentMethod = methodMap[formData.method] || 'bank_transfer';
+      const saleStatus = formData.status === 'Settled' ? 'completed' : 'pending';
+
+      const payload = {
+        invoice_number: invoiceNumber,
+        customer_id: formData.customerId || undefined,
+        payment_method: paymentMethod,
+        status: saleStatus,
+        notes: `Order for ${formData.customer || 'Client'} - ${formData.items || selectedProd?.name}`,
+        items: [
+          {
+            product_id: prodId,
+            quantity: qty,
+            unit_price: Number(unitPrice),
+            discount: 0,
+            tax: 0
+          }
+        ]
+      };
+
+      await createSale(payload);
+      await fetchSales();
+      setIsModalOpen(false);
+      setFormData({ customerId: '', productId: '', customer: '', items: '', total: '', quantity: '1', method: 'NEFT Transfer', status: 'Settled' });
+    } catch (err) {
+      console.error('[Sales] create error:', err);
+      setFormError(err.response?.data?.detail || 'Failed to record sale order. Please check inputs.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const filteredSales = salesHistory.filter(s =>
@@ -294,26 +334,81 @@ const Sales = () => {
         size="md"
       >
         <form onSubmit={handleAddSale} className="space-y-4">
-          <Input
-            label="Client Account Name"
-            placeholder="e.g. Vardaan Electronics Pvt. Ltd."
-            value={formData.customer}
-            onChange={(e) => setFormData({ ...formData, customer: e.target.value })}
-            required
-          />
+          {formError && (
+            <div className="p-2.5 bg-danger/10 border border-danger/30 text-danger text-xs font-semibold rounded-lg">
+              {formError}
+            </div>
+          )}
 
-          <Input
-            label="Contracted Items / Solution"
-            placeholder="e.g. Enterprise Analytics Suite x1"
-            value={formData.items}
-            onChange={(e) => setFormData({ ...formData, items: e.target.value })}
-            required
-          />
+          <div>
+            <label className="block text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary mb-1">
+              Client Account
+            </label>
+            {availableCustomers.length > 0 ? (
+              <select
+                value={formData.customerId}
+                onChange={(e) => {
+                  const cust = availableCustomers.find(c => c.id === e.target.value);
+                  setFormData({
+                    ...formData,
+                    customerId: e.target.value,
+                    customer: cust?.name || formData.customer
+                  });
+                }}
+                className="input-field py-1.5 text-xs font-medium cursor-pointer"
+              >
+                <option value="">Walk-in / Custom Client</option>
+                {availableCustomers.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            ) : null}
+            <Input
+              placeholder="Client Name (e.g. Vardaan Electronics Pvt. Ltd.)"
+              value={formData.customer}
+              onChange={(e) => setFormData({ ...formData, customer: e.target.value })}
+              className="mt-1"
+              required={!formData.customerId}
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary mb-1">
+              Select Product SKU
+            </label>
+            {availableProducts.length > 0 ? (
+              <select
+                value={formData.productId}
+                onChange={(e) => {
+                  const p = availableProducts.find(prod => prod.id === e.target.value);
+                  setFormData({
+                    ...formData,
+                    productId: e.target.value,
+                    items: p?.name || formData.items,
+                    total: p ? String(Number(p.selling_price) * (Number(formData.quantity) || 1)) : formData.total
+                  });
+                }}
+                className="input-field py-1.5 text-xs font-medium cursor-pointer"
+              >
+                <option value="">Default Product / First Available</option>
+                {availableProducts.map(p => (
+                  <option key={p.id} value={p.id}>{p.name} ({p.sku}) — ₹{Number(p.selling_price).toLocaleString('en-IN')}</option>
+                ))}
+              </select>
+            ) : null}
+            <Input
+              label="Line Items Description"
+              placeholder="e.g. Enterprise Analytics Suite x1"
+              value={formData.items}
+              onChange={(e) => setFormData({ ...formData, items: e.target.value })}
+              className="mt-1"
+            />
+          </div>
 
           <div className="grid grid-cols-2 gap-3">
             <Input
               label="Total Value (₹)"
-              placeholder="e.g. ₹18.5L"
+              placeholder="e.g. 185000"
               value={formData.total}
               onChange={(e) => setFormData({ ...formData, total: e.target.value })}
               required
@@ -331,6 +426,9 @@ const Sales = () => {
                 <option value="NEFT Transfer">NEFT Transfer</option>
                 <option value="RTGS Transfer">RTGS Transfer</option>
                 <option value="Corporate NetBanking">Corporate NetBanking</option>
+                <option value="UPI">UPI</option>
+                <option value="Card">Card</option>
+                <option value="Cash">Cash</option>
               </select>
             </div>
           </div>
@@ -339,7 +437,7 @@ const Sales = () => {
             <Button type="button" variant="secondary" size="sm" onClick={() => setIsModalOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" variant="primary" size="sm">
+            <Button type="submit" variant="primary" size="sm" loading={saving}>
               Save Order
             </Button>
           </div>

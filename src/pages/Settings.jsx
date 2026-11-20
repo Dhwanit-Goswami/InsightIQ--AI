@@ -1,8 +1,8 @@
-﻿import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import { useTheme } from '../context/ThemeContext';
-import { FiSun, FiMoon, FiBell, FiEye, FiGlobe, FiCheckCircle } from 'react-icons/fi';
+import { FiSun, FiMoon, FiEye, FiCheckCircle, FiBell, FiGlobe } from 'react-icons/fi';
 
 const Toggle = ({ checked, onChange }) => (
   <button
@@ -10,7 +10,7 @@ const Toggle = ({ checked, onChange }) => (
     role="switch"
     aria-checked={checked}
     onClick={() => onChange(!checked)}
-    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 focus:outline-none ${
+    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 focus:outline-none cursor-pointer ${
       checked ? 'bg-primary' : 'bg-light-border dark:bg-dark-border'
     }`}
   >
@@ -33,13 +33,37 @@ const Settings = () => {
   const [revenueAlerts, setRevenueAlerts] = useState(true);
   const [pushAlerts, setPushAlerts] = useState(false);
 
+  useEffect(() => {
+    try {
+      const savedSettings = localStorage.getItem('insightiq_workspace_settings');
+      if (savedSettings) {
+        const parsed = JSON.parse(savedSettings);
+        if (parsed.weeklyDigest !== undefined) setWeeklyDigest(parsed.weeklyDigest);
+        if (parsed.aiInsights !== undefined) setAiInsights(parsed.aiInsights);
+        if (parsed.revenueAlerts !== undefined) setRevenueAlerts(parsed.revenueAlerts);
+        if (parsed.pushAlerts !== undefined) setPushAlerts(parsed.pushAlerts);
+      }
+    } catch (e) {
+      console.warn('Failed to load local settings', e);
+    }
+  }, []);
+
   const handleSave = () => {
     setSaving(true);
-    setTimeout(() => {
-      setSaving(false);
+    try {
+      localStorage.setItem('insightiq_workspace_settings', JSON.stringify({
+        weeklyDigest,
+        aiInsights,
+        revenueAlerts,
+        pushAlerts,
+      }));
       setSaved(true);
-      setTimeout(() => setSaved(false), 4000);
-    }, 800);
+      setTimeout(() => setSaved(false), 3500);
+    } catch (e) {
+      console.error('Error saving workspace settings', e);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (

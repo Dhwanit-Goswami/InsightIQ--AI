@@ -8,9 +8,9 @@ import Input from '../components/ui/Input';
 import StatCard from '../components/ui/StatCard';
 import SearchBar from '../components/ui/SearchBar';
 import { DonutChartWidget } from '../components/charts/Charts';
-import { FiPlus, FiDownload } from 'react-icons/fi';
+import { FiPlus, FiDownload, FiTrash2 } from 'react-icons/fi';
 import { exportToCSV } from '../utils/exportUtils';
-import { getExpenses } from '../services/api';
+import { getExpenses, createExpense, deleteExpense } from '../services/api';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 const formatINR = (value) => {
@@ -67,7 +67,9 @@ const buildCategoryShare = (expenses) => {
 const Expenses = () => {
   const [expenseLogs, setExpenseLogs] = useState([]);
   const [loading, setLoading]         = useState(true);
+  const [saving, setSaving]           = useState(false);
   const [error, setError]             = useState('');
+  const [formError, setFormError]     = useState('');
   const [search, setSearch]           = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData]       = useState({
@@ -90,20 +92,21 @@ const Expenses = () => {
   ];
   const totalStr = formatINR(totalOutflow);
 
+  const fetchExpenses = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await getExpenses({ limit: 200 });
+      setExpenseLogs((res.data || []).map(mapExpense));
+    } catch (err) {
+      setError('Unable to load expense data. Please try again.');
+      console.error('[Expenses] fetch error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchExpenses = async () => {
-      setLoading(true);
-      setError('');
-      try {
-        const res = await getExpenses({ limit: 200 });
-        setExpenseLogs((res.data || []).map(mapExpense));
-      } catch (err) {
-        setError('Unable to load expense data. Please try again.');
-        console.error('[Expenses] fetch error:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchExpenses();
   }, []);
 
@@ -118,23 +121,42 @@ const Expenses = () => {
     exportToCSV(exportData, `Expense_Journal_${new Date().toISOString().slice(0, 10)}.csv`);
   };
 
-  const handleAddExpense = (e) => {
+  const handleAddExpense = async (e) => {
     e.preventDefault();
     if (!formData.desc || !formData.amount) return;
-    const amt = formData.amount.replace(/[₹,]/g, '');
-    const newExpense = {
-      _id:       `local-${Date.now()}`,
-      date:      new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-      desc:      formData.desc,
-      category:  capitalize(formData.category),
-      amount:    formatINR(Number(amt) || 0),
-      status:    formData.status === 'paid' ? 'Approved' : 'Pending',
-      rawAmount: Number(amt) || 0,
-      rawStatus: formData.status,
-    };
-    setExpenseLogs([newExpense, ...expenseLogs]);
-    setIsModalOpen(false);
-    setFormData({ desc: '', category: 'salaries', amount: '', status: 'paid' });
+    setSaving(true);
+    setFormError('');
+
+    try {
+      const amt = Number(formData.amount.replace(/[₹,LCr ]/g, '')) || 0;
+      await createExpense({
+        description: formData.desc,
+        category: formData.category,
+        amount: amt,
+        expense_date: new Date().toISOString().slice(0, 10),
+        payment_method: 'bank_transfer',
+        status: formData.status,
+      });
+      await fetchExpenses();
+      setIsModalOpen(false);
+      setFormData({ desc: '', category: 'salaries', amount: '', status: 'paid' });
+    } catch (err) {
+      console.error('[Expenses] create error:', err);
+      setFormError(err.response?.data?.detail || 'Failed to log expense. Please check inputs.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteExpense = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this expense record?')) return;
+    try {
+      await deleteExpense(id);
+      await fetchExpenses();
+    } catch (err) {
+      console.error('[Expenses] delete error:', err);
+      alert('Unable to delete expense record.');
+    }
   };
 
   const filteredExpenses = expenseLogs.filter(e =>
@@ -165,6 +187,21 @@ const Expenses = () => {
         <Badge variant={s === 'Approved' ? 'success' : 'warning'} dot>
           {s}
         </Badge>
+      ),
+    },
+    {
+      key: 'actions',
+      label: 'Action',
+      render: (_, e) => (
+        <button
+          type="button"
+          onClick={() => handleDeleteExpense(e._id)}
+          className="text-light-text-muted dark:text-dark-text-muted hover:text-danger dark:hover:text-danger p-1 rounded transition-colors cursor-pointer"
+          title="Delete Expense"
+          aria-label="Delete Expense"
+        >
+          <FiTrash2 className="w-3.5 h-3.5" />
+        </button>
       ),
     },
   ];
@@ -297,6 +334,12 @@ const Expenses = () => {
         size="md"
       >
         <form onSubmit={handleAddExpense} className="space-y-4">
+          {formError && (
+            <div className="p-2.5 bg-danger/10 border border-danger/30 text-danger text-xs font-semibold rounded-lg">
+              {formError}
+            </div>
+          )}
+
           <Input
             label="Item Description"
             placeholder="e.g. Server compute reservation extension"
@@ -354,7 +397,7 @@ const Expenses = () => {
             <Button type="button" variant="secondary" size="sm" onClick={() => setIsModalOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" variant="primary" size="sm">
+            <Button type="submit" variant="primary" size="sm" loading={saving}>
               Save Expense
             </Button>
           </div>

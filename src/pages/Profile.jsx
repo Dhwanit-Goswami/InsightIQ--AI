@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getUserProfile } from '../services/api';
+import { getUserProfile, updateUserProfile } from '../services/api';
 import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
@@ -12,6 +12,7 @@ const Profile = () => {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   const fetchData = async () => {
     setLoading(true);
@@ -31,14 +32,32 @@ const Profile = () => {
     fetchData();
   }, []);
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
-    setTimeout(() => {
-      setSaving(false);
+    setSaveError('');
+    setSaved(false);
+    try {
+      const fullName = `${profile?.firstName || ''} ${profile?.lastName || ''}`.trim() || profile?.name;
+      await updateUserProfile({
+        name: fullName,
+      });
+      const stored = localStorage.getItem('insightiq_user');
+      if (stored) {
+        try {
+          const userObj = JSON.parse(stored);
+          userObj.name = fullName;
+          localStorage.setItem('insightiq_user', JSON.stringify(userObj));
+        } catch {}
+      }
       setSaved(true);
       setTimeout(() => setSaved(false), 4000);
-    }, 800);
+    } catch (err) {
+      console.error('Error saving profile:', err);
+      setSaveError(err.response?.data?.detail || 'Failed to update profile. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleRevokeSession = (indexToRevoke) => {
@@ -106,6 +125,14 @@ const Profile = () => {
         <div className="p-3 bg-success/15 border border-success/30 text-success text-xs font-semibold rounded-xl flex items-center gap-2 animate-fade-down">
           <FiCheckCircle className="w-4 h-4" />
           Profile details updated successfully.
+        </div>
+      )}
+
+      {/* Error Toast */}
+      {saveError && (
+        <div className="p-3 bg-danger/15 border border-danger/30 text-danger text-xs font-semibold rounded-xl flex items-center gap-2 animate-fade-down">
+          <FiAlertCircle className="w-4 h-4" />
+          {saveError}
         </div>
       )}
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getCustomers, createCustomer } from '../services/api';
+import { getCustomers, createCustomer, updateCustomer, deleteCustomer } from '../services/api';
 import Card from '../components/ui/Card';
 import Table from '../components/ui/Table';
 import Badge from '../components/ui/Badge';
@@ -8,7 +8,7 @@ import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import Input from '../components/ui/Input';
 import StatCard from '../components/ui/StatCard';
-import { FiPlus, FiDownload, FiAlertCircle, FiRefreshCw } from 'react-icons/fi';
+import { FiPlus, FiDownload, FiAlertCircle, FiRefreshCw, FiEdit2, FiTrash2 } from 'react-icons/fi';
 import { exportToCSV } from '../utils/exportUtils';
 
 const formatINR = (value) => {
@@ -52,6 +52,7 @@ const Customers = () => {
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState(null);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -103,10 +104,7 @@ const Customers = () => {
     if (!formData.name) return;
 
     setSaving(true);
-    const formattedRevenue = formData.revenue ? (formData.revenue.startsWith('₹') ? formData.revenue : `₹${formData.revenue}`) : '₹50.0L';
-
     try {
-      // Attempt backend persistence
       const apiPayload = {
         name: formData.name,
         email: formData.email || undefined,
@@ -114,23 +112,8 @@ const Customers = () => {
         city: formData.city || undefined,
         segment: formData.plan ? formData.plan.toLowerCase() : 'standard',
       };
-      let createdId = Date.now();
-      try {
-        const res = await createCustomer(apiPayload);
-        if (res.data?.id) createdId = res.data.id;
-      } catch (apiErr) {
-        console.warn('Backend createCustomer fallback:', apiErr.message);
-      }
-
-      const newCustomer = mapCustomer({
-        id: createdId,
-        ...formData,
-        revenue: formattedRevenue,
-        total_purchases: formData.revenue ? Number(formData.revenue.replace(/[₹,]/g, '')) : 5000000,
-        is_active: formData.status === 'Active',
-      });
-
-      setCustomers(prev => [newCustomer, ...prev]);
+      await createCustomer(apiPayload);
+      await fetchData();
       setIsModalOpen(false);
       setFormData({
         name: '',
@@ -145,8 +128,43 @@ const Customers = () => {
       });
     } catch (err) {
       console.error('Error saving customer:', err);
+      alert(err.response?.data?.detail || 'Failed to save customer account.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleUpdateCustomer = async (e) => {
+    e.preventDefault();
+    if (!editingCustomer?.id) return;
+    setSaving(true);
+    try {
+      await updateCustomer(editingCustomer.id, {
+        name: editingCustomer.name,
+        email: editingCustomer.email || undefined,
+        phone: editingCustomer.phone || undefined,
+        city: editingCustomer.city || undefined,
+        segment: (editingCustomer.plan || 'standard').toLowerCase(),
+        is_active: editingCustomer.status === 'Active',
+      });
+      await fetchData();
+      setEditingCustomer(null);
+    } catch (err) {
+      console.error('Error updating customer:', err);
+      alert(err.response?.data?.detail || 'Failed to update customer account.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteCustomer = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this customer account?')) return;
+    try {
+      await deleteCustomer(id);
+      await fetchData();
+    } catch (err) {
+      console.error('Error deleting customer:', err);
+      alert('Unable to delete customer account.');
     }
   };
 
@@ -204,6 +222,32 @@ const Customers = () => {
         <Badge variant={s === 'Active' ? 'success' : s === 'At Risk' ? 'danger' : 'warning'} dot>
           {s}
         </Badge>
+      ),
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      render: (_, c) => (
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setEditingCustomer(c)}
+            className="text-light-text-muted dark:text-dark-text-muted hover:text-primary dark:hover:text-primary transition-colors cursor-pointer"
+            title="Edit Customer"
+            aria-label="Edit Customer"
+          >
+            <FiEdit2 className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => handleDeleteCustomer(c.id)}
+            className="text-light-text-muted dark:text-dark-text-muted hover:text-danger dark:hover:text-danger transition-colors cursor-pointer"
+            title="Delete Customer"
+            aria-label="Delete Customer"
+          >
+            <FiTrash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
       ),
     },
   ];
@@ -407,6 +451,68 @@ const Customers = () => {
             </Button>
             <Button type="submit" variant="primary" size="sm" loading={saving}>
               Save Account
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ─── Edit Customer Modal ─── */}
+      <Modal
+        isOpen={Boolean(editingCustomer)}
+        onClose={() => setEditingCustomer(null)}
+        title="Update Account Details"
+        subtitle={`Edit corporate information for ${editingCustomer?.name || 'Client'}`}
+        size="md"
+      >
+        <form onSubmit={handleUpdateCustomer} className="space-y-4">
+          <Input
+            label="Company Name"
+            value={editingCustomer?.name || ''}
+            onChange={(e) => setEditingCustomer({ ...editingCustomer, name: e.target.value })}
+            required
+          />
+
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Contact Email"
+              type="email"
+              value={editingCustomer?.email || ''}
+              onChange={(e) => setEditingCustomer({ ...editingCustomer, email: e.target.value })}
+            />
+            <Input
+              label="Phone Number"
+              value={editingCustomer?.phone || ''}
+              onChange={(e) => setEditingCustomer({ ...editingCustomer, phone: e.target.value })}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="City / Hub"
+              value={editingCustomer?.city || ''}
+              onChange={(e) => setEditingCustomer({ ...editingCustomer, city: e.target.value })}
+            />
+            <div>
+              <label className="block text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary mb-1">
+                Account Status
+              </label>
+              <select
+                value={editingCustomer?.status || 'Active'}
+                onChange={(e) => setEditingCustomer({ ...editingCustomer, status: e.target.value })}
+                className="input-field py-1.5 text-xs font-medium cursor-pointer"
+              >
+                <option value="Active">Active</option>
+                <option value="At Risk">At Risk</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-3">
+            <Button type="button" variant="secondary" size="sm" onClick={() => setEditingCustomer(null)}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary" size="sm" loading={saving}>
+              Update Account
             </Button>
           </div>
         </form>

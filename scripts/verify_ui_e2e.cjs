@@ -286,6 +286,7 @@ async function main() {
     await inspectPage('Company Profile', '/company');
     await inspectPage('Personal Profile', '/profile');
     await inspectPage('Settings', '/settings');
+    await inspectPage('Data Import', '/import');
 
     console.log('\n========================================================================================');
     console.log('                       INSIGHTIQ BROWSER VERIFICATION SUMMARY                          ');

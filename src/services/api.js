@@ -754,4 +754,60 @@ export const registerUser = async ({ name, email, password, company_name, indust
   return api.post('/auth/register', { name, email, password, company_name, industry });
 };
 
+// ─── CSV Data Import ─────────────────────────────────
+export const getImportCategories = async () => {
+  return api.get('/import/categories');
+};
+
+export const downloadImportTemplate = async (category) => {
+  const response = await api.get(`/import/template/${category}`, {
+    responseType: 'blob',
+  });
+  const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `insightiq_${category}_template.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(url);
+};
+
+export const validateImportFile = async (file, category) => {
+  const text = await file.text();
+  return api.post('/import/validate', {
+    category,
+    csv_content: text,
+    filename: file.name,
+  }, {
+    timeout: 30000,
+  });
+};
+
+export const commitImportData = async (category, validRecords, mode = 'all_or_nothing') => {
+  return api.post('/import/commit', {
+    category,
+    valid_records: validRecords,
+    mode,
+  }, {
+    timeout: 60000,
+  });
+};
+
+export const downloadErrorCSV = async (headers, errors) => {
+  const response = await api.post('/import/error-csv', { headers, errors }, {
+    responseType: 'blob',
+  });
+  const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `insightiq_import_errors_${Date.now()}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(url);
+};
+
 export default api;

@@ -15,6 +15,7 @@ from app.api.endpoints import (
     dashboard,
     analytics,
     insights,
+    data_import,
 )
 
 api_router = APIRouter()
@@ -66,3 +67,6 @@ api_router.include_router(analytics.router, prefix="/analytics", tags=["Analytic
 
 # ─── AI Insights ──────────────────────────────────────────
 api_router.include_router(insights.router, prefix="/insights", tags=["AI Insights"])
+
+# ─── Data Import ──────────────────────────────────────────
+api_router.include_router(data_import.router, prefix="/import", tags=["Data Import"])

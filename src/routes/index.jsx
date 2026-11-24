@@ -22,6 +22,7 @@ const Expenses = lazy(() => import('../pages/Expenses'));
 const Company = lazy(() => import('../pages/Company'));
 const Profile = lazy(() => import('../pages/Profile'));
 const Settings = lazy(() => import('../pages/Settings'));
+const DataImport = lazy(() => import('../pages/DataImport'));
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAuth();
@@ -64,6 +65,7 @@ const AppRoutes = () => (
         <Route path="/company" element={<ProtectedRoute><Company /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+        <Route path="/import" element={<ProtectedRoute><DataImport /></ProtectedRoute>} />
 
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/" replace />} />

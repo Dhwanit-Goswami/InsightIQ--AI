@@ -1,9 +1,9 @@
-﻿import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   FiGrid, FiBarChart2, FiFileText, FiCpu, FiMessageSquare,
   FiUsers, FiShoppingBag, FiPackage, FiDollarSign,
-  FiBriefcase, FiUser, FiSettings, FiX,
+  FiBriefcase, FiUser, FiSettings, FiX, FiUploadCloud,
 } from 'react-icons/fi';
 
 const navSections = [
@@ -28,6 +28,7 @@ const navSections = [
       { path: '/sales', icon: FiShoppingBag, label: 'Sales' },
       { path: '/inventory', icon: FiPackage, label: 'Inventory' },
       { path: '/expenses', icon: FiDollarSign, label: 'Expenses' },
+      { path: '/import', icon: FiUploadCloud, label: 'Data Import' },
     ],
   },
   {

@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import AppLayout from '../layouts/AppLayout';
 import { PageLoader } from '../components/ui/Loader';
 import { useAuth } from '../context/AuthContext';
+import ErrorBoundary from '../components/common/ErrorBoundary';
 
 // Lazy load all pages
 const Landing = lazy(() => import('../pages/Landing'));
@@ -31,36 +32,44 @@ const ProtectedRoute = ({ children }) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  return <AppLayout>{children}</AppLayout>;
+  return (
+    <AppLayout>
+      <ErrorBoundary>
+        {children}
+      </ErrorBoundary>
+    </AppLayout>
+  );
 };
 
 const AppRoutes = () => (
-  <Suspense fallback={<PageLoader />}>
-    <Routes>
-      {/* Public Routes */}
-      <Route path="/" element={<Landing />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
+  <ErrorBoundary>
+    <Suspense fallback={<PageLoader />}>
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/" element={<Landing />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
 
-      {/* Protected Routes */}
-      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-      <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
-      <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
-      <Route path="/ai-insights" element={<ProtectedRoute><AIInsights /></ProtectedRoute>} />
-      <Route path="/ai-assistant" element={<ProtectedRoute><AIAssistant /></ProtectedRoute>} />
-      <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
-      <Route path="/sales" element={<ProtectedRoute><Sales /></ProtectedRoute>} />
-      <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
-      <Route path="/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
-      <Route path="/company" element={<ProtectedRoute><Company /></ProtectedRoute>} />
-      <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-      <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+        {/* Protected Routes */}
+        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+        <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+        <Route path="/ai-insights" element={<ProtectedRoute><AIInsights /></ProtectedRoute>} />
+        <Route path="/ai-assistant" element={<ProtectedRoute><AIAssistant /></ProtectedRoute>} />
+        <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
+        <Route path="/sales" element={<ProtectedRoute><Sales /></ProtectedRoute>} />
+        <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
+        <Route path="/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
+        <Route path="/company" element={<ProtectedRoute><Company /></ProtectedRoute>} />
+        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
 
-      {/* Catch-all */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
-  </Suspense>
+        {/* Catch-all */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
+  </ErrorBoundary>
 );
 
 export default AppRoutes;

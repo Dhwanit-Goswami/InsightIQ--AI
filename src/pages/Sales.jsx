@@ -52,6 +52,20 @@ const mapSale = (s) => ({
   rawStatus: s.status || 'pending',
 });
 
+const buildMonthlyOrderCounts = (history) => {
+  if (!history || !history.length) return [];
+  const monthMap = {};
+  history.forEach(item => {
+    const parts = (item.date || '').split(' ');
+    const monthKey = parts.length >= 3 ? `${parts[1]} ${parts[2]}` : (item.date || 'Recent');
+    monthMap[monthKey] = (monthMap[monthKey] || 0) + 1;
+  });
+  return Object.entries(monthMap).slice(-6).map(([month, count]) => ({
+    month,
+    sales: count,
+  }));
+};
+
 // ── component ─────────────────────────────────────────────────────────────────
 const Sales = () => {
   const [salesHistory, setSalesHistory]   = useState([]);
@@ -72,6 +86,7 @@ const Sales = () => {
   const settledCount = salesHistory.filter(r => r.rawStatus === 'completed').length;
   const pendingCount = salesHistory.filter(r => r.rawStatus === 'pending').length;
   const avgDeal = salesHistory.length ? totalRevenue / salesHistory.length : 0;
+  const chartData = buildMonthlyOrderCounts(salesHistory);
 
   const fetchSales = async () => {
     setLoading(true);

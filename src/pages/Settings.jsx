@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import { useTheme } from '../context/ThemeContext';
-import { FiSun, FiMoon, FiEye, FiCheckCircle, FiBell, FiGlobe } from 'react-icons/fi';
+import { getWorkspaceSettings, updateWorkspaceSettings } from '../services/api';
+import { FiSun, FiMoon, FiEye, FiCheckCircle, FiBell, FiGlobe, FiAlertCircle } from 'react-icons/fi';
 
 const Toggle = ({ checked, onChange }) => (
   <button
@@ -26,31 +27,61 @@ const Settings = () => {
   const { isDark, toggleTheme } = useTheme();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   // Workspace configuration toggles
   const [weeklyDigest, setWeeklyDigest] = useState(true);
   const [aiInsights, setAiInsights] = useState(true);
   const [revenueAlerts, setRevenueAlerts] = useState(true);
   const [pushAlerts, setPushAlerts] = useState(false);
+  const [currency, setCurrency] = useState('INR');
+  const [timezone, setTimezone] = useState('Asia/Kolkata');
 
   useEffect(() => {
-    try {
-      const savedSettings = localStorage.getItem('insightiq_workspace_settings');
-      if (savedSettings) {
-        const parsed = JSON.parse(savedSettings);
-        if (parsed.weeklyDigest !== undefined) setWeeklyDigest(parsed.weeklyDigest);
-        if (parsed.aiInsights !== undefined) setAiInsights(parsed.aiInsights);
-        if (parsed.revenueAlerts !== undefined) setRevenueAlerts(parsed.revenueAlerts);
-        if (parsed.pushAlerts !== undefined) setPushAlerts(parsed.pushAlerts);
+    const loadSettings = async () => {
+      try {
+        const res = await getWorkspaceSettings();
+        const data = res.data;
+        if (data) {
+          setWeeklyDigest(data.weekly_digest ?? true);
+          setAiInsights(data.ai_insights_alerts ?? true);
+          setRevenueAlerts(data.revenue_alerts ?? true);
+          setPushAlerts(data.push_alerts ?? false);
+          if (data.currency) setCurrency(data.currency);
+          if (data.timezone) setTimezone(data.timezone);
+        }
+      } catch {
+        // Fallback to localStorage if API unavailable
+        try {
+          const savedSettings = localStorage.getItem('insightiq_workspace_settings');
+          if (savedSettings) {
+            const parsed = JSON.parse(savedSettings);
+            if (parsed.weeklyDigest !== undefined) setWeeklyDigest(parsed.weeklyDigest);
+            if (parsed.aiInsights !== undefined) setAiInsights(parsed.aiInsights);
+            if (parsed.revenueAlerts !== undefined) setRevenueAlerts(parsed.revenueAlerts);
+            if (parsed.pushAlerts !== undefined) setPushAlerts(parsed.pushAlerts);
+          }
+        } catch {}
       }
-    } catch (e) {
-      console.warn('Failed to load local settings', e);
-    }
+    };
+    loadSettings();
   }, []);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setSaving(true);
+    setSaveError('');
+    setSaved(false);
+    const payload = {
+      weekly_digest: weeklyDigest,
+      ai_insights_alerts: aiInsights,
+      revenue_alerts: revenueAlerts,
+      push_alerts: pushAlerts,
+      theme: isDark ? 'dark' : 'light',
+      currency,
+      timezone,
+    };
     try {
+      await updateWorkspaceSettings(payload);
       localStorage.setItem('insightiq_workspace_settings', JSON.stringify({
         weeklyDigest,
         aiInsights,
@@ -61,6 +92,7 @@ const Settings = () => {
       setTimeout(() => setSaved(false), 3500);
     } catch (e) {
       console.error('Error saving workspace settings', e);
+      setSaveError(e?.response?.data?.detail || 'Failed to save workspace preferences.');
     } finally {
       setSaving(false);
     }
@@ -83,7 +115,14 @@ const Settings = () => {
       {saved && (
         <div className="p-3 bg-success/15 border border-success/30 text-success text-xs font-semibold rounded-xl flex items-center gap-2 animate-fade-down">
           <FiCheckCircle className="w-4 h-4" />
-          Workspace preferences saved successfully.
+          Workspace preferences saved to PostgreSQL successfully.
+        </div>
+      )}
+
+      {saveError && (
+        <div className="p-3 bg-danger/15 border border-danger/30 text-danger text-xs font-semibold rounded-xl flex items-center gap-2">
+          <FiAlertCircle className="w-4 h-4" />
+          {saveError}
         </div>
       )}
 
@@ -160,20 +199,20 @@ const Settings = () => {
           <div className="space-y-4">
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-light-text-muted dark:text-dark-text-muted uppercase">Standard Currency</label>
-              <select className="input-field py-2 text-xs">
+              <select value={currency} onChange={(e) => setCurrency(e.target.value)} className="input-field py-2 text-xs">
                 <option value="INR">INR (₹) Indian Rupee</option>
                 <option value="USD">USD ($) US Dollar</option>
                 <option value="EUR">EUR (€) Euro</option>
-                <option value="GBP">GBP (Â£) British Pound</option>
+                <option value="GBP">GBP (£) British Pound</option>
               </select>
             </div>
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-light-text-muted dark:text-dark-text-muted uppercase">System Timezone</label>
-              <select className="input-field py-2 text-xs">
-                <option value="IST">Asia/Kolkata (IST +5:30)</option>
-                <option value="PST">America/Los_Angeles (PST)</option>
-                <option value="EST">America/New_York (EST)</option>
-                <option value="GMT">Europe/London (GMT)</option>
+              <select value={timezone} onChange={(e) => setTimezone(e.target.value)} className="input-field py-2 text-xs">
+                <option value="Asia/Kolkata">Asia/Kolkata (IST +5:30)</option>
+                <option value="America/Los_Angeles">America/Los_Angeles (PST)</option>
+                <option value="America/New_York">America/New_York (EST)</option>
+                <option value="Europe/London">Europe/London (GMT)</option>
               </select>
             </div>
             <div className="space-y-1.5">

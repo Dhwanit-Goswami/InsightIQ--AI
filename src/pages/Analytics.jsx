@@ -5,7 +5,7 @@ import {
 } from 'react-icons/fi';
 import {
   getAnalyticsOverview, getCustomerGrowth,
-  getQuarterlyComparison, getTopProducts,
+  getQuarterlyComparison, getTopProducts, getSalesForecast,
   formatMonthlyTrend, formatExpenseBreakdown, formatINR
 } from '../services/api';
 import Card from '../components/ui/Card';
@@ -39,6 +39,7 @@ const Analytics = () => {
   const [custGrowth, setCustGrowth] = useState([]);
   const [quartComp, setQuartComp] = useState([]);
   const [products, setProducts] = useState([]);
+  const [forecastData, setForecastData] = useState(null);
 
   // Filters (Section 20)
   const [periodFilter, setPeriodFilter] = useState('Last 90 Days');
@@ -54,11 +55,12 @@ const Analytics = () => {
     setError('');
     try {
       const selectedDays = periodToDays[periodFilter] || 90;
-      const [overviewRes, cust, quart, prod] = await Promise.all([
+      const [overviewRes, cust, quart, prod, fcst] = await Promise.all([
         getAnalyticsOverview(selectedDays),
         getCustomerGrowth(),
         getQuarterlyComparison(),
         getTopProducts(selectedDays),
+        getSalesForecast(6),
       ]);
 
       const overview = overviewRes.data || {};
@@ -78,6 +80,7 @@ const Analytics = () => {
       setCustGrowth(cust.data || []);
       setQuartComp(quart.data || []);
       setProducts(prod.data || []);
+      setForecastData(fcst.data || null);
     } catch (err) {
       console.error('Error fetching analytics data', err);
       setError(err.response?.data?.detail || err.message || 'Failed to load live analytics data.');
@@ -321,13 +324,54 @@ const Analytics = () => {
               data={quartComp}
               keys={[
                 { key: 'revenue', name: 'Realized Revenue', color: '#5278A6' },
-                { key: 'target', name: 'Quarterly Target', color: '#8A9199' },
+                { key: 'expenses', name: 'Operating Expenses', color: '#D97706' },
+                { key: 'profit', name: 'Net Profit', color: '#5A8065' },
               ]}
-              formatter={(v) => `₹${(v / 10000000).toFixed(1)}Cr`}
+              formatter={(v) => formatINR(v)}
             />
           )}
         </div>
       </Card>
+
+      {/* ─── 5B. ML Sales Forecasting (Holt-Winters / Ridge) ─── */}
+      <ChartCard
+        title="AI Sales Revenue Forecast (ML)"
+        subtitle={
+          forecastData?.data_available
+            ? `Model: ${forecastData.model} • RMSE: ${formatINR(forecastData.metrics?.rmse)} • MAE: ${formatINR(forecastData.metrics?.mae)}`
+            : 'Time-series sales projection using historical PostgreSQL transactions.'
+        }
+        loading={loading}
+        badge={forecastData?.data_available ? '6-Month Projection' : 'ML Pipeline'}
+        height={300}
+      >
+        {!forecastData?.data_available ? (
+          <div className="h-full flex items-center justify-center text-xs text-light-text-muted dark:text-dark-text-muted">
+            {forecastData?.reason || 'Insufficient historical sales months to train forecasting model.'}
+          </div>
+        ) : (
+          <LineChartWidget
+            data={[
+              ...(forecastData.historical || []).map(h => ({
+                month: h.month,
+                actual: Number((h.revenue / 100000).toFixed(2)),
+                predicted: null,
+              })),
+              ...(forecastData.forecast || []).map(f => ({
+                month: f.month,
+                actual: null,
+                predicted: Number((f.forecast / 100000).toFixed(2)),
+              })),
+            ]}
+            keys={[
+              { key: 'actual', name: 'Historical Revenue (₹L)', color: '#5278A6' },
+              { key: 'predicted', name: 'ML Forecast (₹L)', color: '#10B981' },
+            ]}
+            formatter={(v) => (v != null ? `₹${v}L` : '—')}
+            height={280}
+          />
+        )}
+      </ChartCard>
 
       {/* ─── 6. Detailed Table with Progressive Disclosure (Section 20) ─── */}
       <Card padding={true} className="space-y-4">

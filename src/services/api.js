@@ -285,9 +285,23 @@ export const getExpenseBreakdown = async (days = 90) => {
   return { data: formatExpenseBreakdown(breakdown) };
 };
 
-export const getCustomerGrowth = async () => {
-  await delay(300);
-  return { data: customerGrowth };
+export const getCustomerGrowth = async (months = 12) => {
+  if (isDemoMode) {
+    return { data: customerGrowth };
+  }
+  try {
+    const res = await api.get('/analytics/customer-growth', { params: { months } });
+    const rows = res.data?.data || [];
+    return {
+      data: rows.map(r => ({
+        month: r.month,
+        newCustomers: r.new_customers ?? r.newCustomers ?? 0,
+        totalCustomers: r.total_customers ?? r.totalCustomers ?? 0,
+      }))
+    };
+  } catch {
+    return { data: [] };
+  }
 };
 
 export const getPerformanceRadar = async () => {
@@ -295,9 +309,16 @@ export const getPerformanceRadar = async () => {
   return { data: performanceRadar };
 };
 
-export const getQuarterlyComparison = async () => {
-  await delay(250);
-  return { data: quarterlyComparison };
+export const getQuarterlyComparison = async (years = 2) => {
+  if (isDemoMode) {
+    return { data: quarterlyComparison };
+  }
+  try {
+    const res = await api.get('/analytics/quarterly', { params: { years } });
+    return { data: res.data?.data || [] };
+  } catch {
+    return { data: [] };
+  }
 };
 
 export const getSalesByChannel = async () => {
@@ -408,7 +429,7 @@ export const sendAIMessage = async (message) => {
       };
     }
     return { data };
-  } catch (err) {
+  } catch {
     // Graceful degradation: return an error message formatted for the chat UI
     return {
       data: {
@@ -425,138 +446,6 @@ export const sendAIMessage = async (message) => {
       }
     };
   }
-};
-  await delay(900);
-  const q = message.toLowerCase();
-
-  // Fetch live KPIs for context (90-day window, non-blocking on failure)
-  let liveKpis = null;
-  try {
-    const overviewRes = await api.get('/dashboard/overview', { params: { days: 90 } });
-    liveKpis = overviewRes.data?.kpis || null;
-  } catch {
-    // Fall back to template responses if live data unavailable
-  }
-
-  const fmtINR = (v) => {
-    const n = Number(v ?? 0);
-    if (n >= 10000000) return `₹${(n / 10000000).toFixed(1)} Cr`;
-    if (n >= 100000)   return `₹${(n / 100000).toFixed(1)} L`;
-    if (n >= 1000)     return `₹${(n / 1000).toFixed(1)} K`;
-    return `₹${n.toFixed(0)}`;
-  };
-
-  const revVal     = liveKpis ? Number(liveKpis.revenue?.value ?? 0)   : null;
-  const expVal     = liveKpis ? Number(liveKpis.expenses?.value ?? 0)  : null;
-  const profitVal  = liveKpis ? Number((liveKpis.net_profit ?? liveKpis.profit)?.value ?? 0) : null;
-  const marginVal  = liveKpis ? Number(liveKpis.profit_margin?.value ?? 0) : null;
-  const orderCount = liveKpis ? Number(liveKpis.orders?.value ?? 0)    : null;
-  const aov        = liveKpis ? Number(liveKpis.average_order_value?.value ?? 0) : null;
-  const custCount  = liveKpis ? Number(liveKpis.customers?.value ?? 0) : null;
-
-  const dataNote = liveKpis
-    ? 'Live transactional database — Sales Ledger, Accounts Payable, Inventory Registry'
-    : 'Historical ERP records — Tally / Sales Orders Registry + 12 Months Data';
-  const confidenceNote = liveKpis
-    ? '95% • Computed from live PostgreSQL transactional data'
-    : '90% • Based on historical verified transactions';
-
-  let structuredResponse = {
-    answer: '',
-    evidence: '',
-    explanation: '',
-    recommendation: '',
-    sources: dataNote,
-    confidence: confidenceNote,
-  };
-
-  if (q.includes('revenue') && (q.includes('change') || q.includes('month') || q.includes('why'))) {
-    const revFmt  = revVal  !== null ? fmtINR(revVal)  : '₹24.8 L';
-    const revGrow = liveKpis?.revenue?.change_pct != null ? `${liveKpis.revenue.change_pct > 0 ? '+' : ''}${liveKpis.revenue.change_pct}%` : '+12.4%';
-    structuredResponse = {
-      answer: `Revenue for the last 90 days stands at ${revFmt} (${revGrow} vs prior period), driven by completed sales orders.`,
-      evidence: `• Total revenue (90 days): ${revFmt}\n• Growth vs prior 90 days: ${revGrow}\n• Total completed orders: ${orderCount !== null ? orderCount : 'N/A'}\n• Average order value: ${aov !== null ? fmtINR(aov) : 'N/A'}\n• Net profit: ${profitVal !== null ? fmtINR(profitVal) : 'N/A'}`,
-      explanation: 'Revenue trends reflect actual completed sale orders recorded in the database. Growth is calculated relative to the same prior window, isolating seasonality from operational improvements.',
-      recommendation: `${revGrow.startsWith('+') ? 'Sustain momentum by reviewing top-performing products and prioritising reorders for high-velocity SKUs.' : 'Investigate the revenue decline — check for cancelled orders, reduced order frequency, or seasonal demand dip.'}`,
-      sources: dataNote,
-      confidence: confidenceNote,
-    };
-  } else if (q.includes('product') || q.includes('underperform')) {
-    structuredResponse = {
-      answer: 'Product performance is tracked via unit sales and revenue contribution. Products with zero growth vs the prior period require attention.',
-      evidence: `• Total active SKUs tracked: check Inventory page\n• Revenue base (90 days): ${revVal !== null ? fmtINR(revVal) : 'N/A'}\n• Products with declining revenue show negative growth % in Analytics → Products table\n• Low-stock products risk lost sales — check Dashboard inventory alerts`,
-      explanation: 'Product health is determined by comparing revenue and units sold against the prior equivalent period. Growth is null when no prior-period sales exist for a SKU.',
-      recommendation: 'Review the Analytics → Products table sorted by growth. Prioritise restocking products with high revenue but declining units. Consider retiring or repositioning SKUs with zero velocity for 60+ days.',
-      sources: dataNote,
-      confidence: confidenceNote,
-    };
-  } else if (q.includes('expense') || q.includes('cost')) {
-    const expFmt   = expVal     !== null ? fmtINR(expVal)   : '₹18.4 L';
-    const expGrow  = liveKpis?.expenses?.change_pct != null ? `${liveKpis.expenses.change_pct > 0 ? '+' : ''}${liveKpis.expenses.change_pct}%` : '+3.2%';
-    structuredResponse = {
-      answer: `Total recorded expenses for the last 90 days are ${expFmt} (${expGrow} vs prior period).`,
-      evidence: `• Total paid expenses (90 days): ${expFmt}\n• Change vs prior period: ${expGrow}\n• Profit margin: ${marginVal !== null ? `${marginVal.toFixed(1)}%` : 'N/A'}\n• Category breakdown: visible in Dashboard and Analytics expense donut charts`,
-      explanation: 'Expenses are sourced from paid vendor invoices and operational costs logged in the Expenses module. The donut chart breaks these into categories such as operations, marketing, logistics, and administration.',
-      recommendation: `${expGrow.startsWith('+') ? 'Identify the fastest-growing expense categories in the Analytics expense chart. Negotiate vendor terms or defer discretionary spend to protect margins.' : 'Expense reduction is positive — verify this reflects genuine savings rather than deferred payments that may surface next quarter.'}`,
-      sources: dataNote,
-      confidence: confidenceNote,
-    };
-  } else if (q.includes('risk')) {
-    structuredResponse = {
-      answer: `Current business risk indicators: ${liveKpis ? `profit margin at ${marginVal !== null ? marginVal.toFixed(1) : 0}%, ${orderCount} orders completed in 90 days.` : 'review inventory alerts and receivables for key risk signals.'}`,
-      evidence: `• Net profit (90 days): ${profitVal !== null ? fmtINR(profitVal) : 'N/A'}\n• Profit margin: ${marginVal !== null ? `${marginVal.toFixed(1)}%` : 'N/A'}\n• Active customer count: ${custCount !== null ? custCount : 'N/A'}\n• Low-stock alerts: check Dashboard inventory card`,
-      explanation: 'Business risk is assessed across three dimensions: margin compression (expenses growing faster than revenue), inventory stockouts reducing order fulfilment, and customer concentration risk (few customers contributing disproportionate revenue).',
-      recommendation: 'Monitor the inventory alert count on the Dashboard. If margins are below 15%, review expense categories for reduction opportunities. Run the AI Insights report to get data-driven risk flags.',
-      sources: dataNote,
-      confidence: confidenceNote,
-    };
-  } else if (q.includes('customer') || q.includes('retain') || q.includes('churn')) {
-    structuredResponse = {
-      answer: `Total active customers: ${custCount !== null ? custCount : 'tracked in the Customers module'}. ${liveKpis?.customers?.change_pct != null ? `New customer growth vs prior period: ${liveKpis.customers.change_pct > 0 ? '+' : ''}${liveKpis.customers.change_pct}%.` : ''}`,
-      evidence: `• Active customer base: ${custCount !== null ? custCount : 'N/A'}\n• New customer growth rate: ${liveKpis?.customers?.change_pct != null ? `${liveKpis.customers.change_pct > 0 ? '+' : ''}${liveKpis.customers.change_pct}%` : 'N/A'}\n• Revenue per period: ${revVal !== null ? fmtINR(revVal) : 'N/A'}\n• Orders in period: ${orderCount !== null ? orderCount : 'N/A'}`,
-      explanation: 'Customer health is monitored via active customer count, new customer acquisition rate, and order frequency. High repeat order rates indicate good retention; a rising customer base with stable revenue may signal order-size compression.',
-      recommendation: 'Review the Customers page for segmentation. High-value customers with declining order frequency are churn risks — engage with promotions or account reviews. Use the Sales page to identify repeat buyers.',
-      sources: dataNote,
-      confidence: confidenceNote,
-    };
-  } else if (q.includes('focus') || q.includes('week') || q.includes('recommend') || q.includes('strategy')) {
-    let topRec = 'Prioritize collection on pending invoices and restock fast-moving items.';
-    try {
-      const insRes = await api.get('/insights');
-      const ins = insRes.data?.[0];
-      if (ins?.recommendations?.[0]?.action) {
-        topRec = ins.recommendations[0].action;
-      }
-    } catch {}
-
-    structuredResponse = {
-      answer: `Immediate priority: ${topRec}`,
-      evidence: `• Current 90-day operating status:\n• Revenue: ${revVal !== null ? fmtINR(revVal) : 'N/A'}\n• Net profit margin: ${marginVal !== null ? `${marginVal.toFixed(1)}%` : 'N/A'}\n• Completed orders: ${orderCount !== null ? orderCount : 'N/A'}\n• Customer growth: ${liveKpis?.customers?.change_pct != null ? `${liveKpis.customers.change_pct}%` : 'N/A'}`,
-      explanation: 'Recommendations are derived from the InsightIQ pattern identification engine, correlating revenue trajectory, margin risk, and inventory thresholds from your database.',
-      recommendation: `1. Execute priority action: ${topRec}\n2. Verify inventory buffers for high-velocity SKUs on the Inventory page.\n3. Track weekly conversion in Analytics overview.`,
-      sources: dataNote,
-      confidence: confidenceNote,
-    };
-  } else {
-    structuredResponse = {
-      answer: `Analysis for: "${message}". ${liveKpis ? `Current 90-day snapshot: revenue ${fmtINR(revVal)}, net profit ${fmtINR(profitVal)}, ${orderCount} orders, ${custCount} active customers.` : 'Business metrics indicate healthy operating stability.'}`,
-      evidence: liveKpis
-        ? `• Revenue (90 days): ${fmtINR(revVal)}\n• Net profit: ${fmtINR(profitVal)}\n• Profit margin: ${marginVal !== null ? `${marginVal.toFixed(1)}%` : 'N/A'}\n• Orders: ${orderCount}\n• AOV: ${fmtINR(aov)}\n• Active customers: ${custCount}`
-        : '• Operating margin: Healthy for Indian SME sector\n• Cash runway: Positive based on current burn rate\n• Client retention: Tracked via Customers module',
-      explanation: 'InsightIQ synthesizes live transactional data from your PostgreSQL database — including sales orders, expenses, inventory levels, and customer records — to deliver accurate, evidence-backed business intelligence.',
-      recommendation: 'Use the Analytics page for period-over-period trend analysis. Run AI Insights (auto-generate) for data-driven recommendations. Check the Dashboard for real-time KPI health.',
-      sources: dataNote,
-      confidence: confidenceNote,
-    };
-  }
-
-  return {
-    data: {
-      role: 'assistant',
-      structured: structuredResponse,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    }
-  };
 };
 
 // ─── Reports ─────────────────────────────────────────

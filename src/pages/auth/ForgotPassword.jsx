@@ -1,21 +1,28 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FiMail, FiArrowLeft, FiCheck } from 'react-icons/fi';
+import { FiMail, FiArrowLeft, FiCheck, FiAlertCircle } from 'react-icons/fi';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
+import { forgotPassword } from '../../services/api';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      await forgotPassword(email);
       setSuccess(true);
-    }, 800);
+    } catch (err) {
+      setError(err?.response?.data?.detail || 'Unable to process request. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -58,6 +65,12 @@ const ForgotPassword = () => {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <div className="p-2.5 rounded-lg bg-danger/15 border border-danger/30 text-danger text-xs flex items-center gap-2">
+                <FiAlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
             <Input
               label="Work Email"
               type="email"

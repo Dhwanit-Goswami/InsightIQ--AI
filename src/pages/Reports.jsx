@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getReports, createReport, getSales, getInventory, getExpenses, getDashboardKPIs } from '../services/api';
+import { getReports, createReport, getReportPreview, getSales, getInventory, getExpenses, getDashboardKPIs } from '../services/api';
 import Card from '../components/ui/Card';
 import Table from '../components/ui/Table';
 import SearchBar from '../components/ui/SearchBar';
@@ -22,6 +22,22 @@ const Reports = () => {
 
   // Modals & Notifications
   const [viewingReport, setViewingReport] = useState(null);
+  const [reportPreview, setReportPreview] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+
+  const handleViewReport = async (row) => {
+    setViewingReport(row);
+    setReportPreview(null);
+    setPreviewLoading(true);
+    try {
+      const res = await getReportPreview(row.id);
+      setReportPreview(res.data);
+    } catch {
+      setReportPreview(null);
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newType, setNewType] = useState('Financial');
@@ -212,7 +228,7 @@ const Reports = () => {
         <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
           {/* View */}
           <button
-            onClick={() => setViewingReport(row)}
+            onClick={() => handleViewReport(row)}
             className="p-1.5 rounded-md hover:bg-light-surface dark:hover:bg-dark-surface text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text-primary dark:hover:text-dark-text-primary transition-colors cursor-pointer"
             title="View report details"
             aria-label="View report details"
@@ -327,7 +343,7 @@ const Reports = () => {
           data={reports}
           loading={loading}
           emptyMessage="No reports match your selected criteria."
-          onRowClick={(row) => setViewingReport(row)}
+          onRowClick={(row) => handleViewReport(row)}
         />
       </Card>
 
@@ -389,14 +405,62 @@ const Reports = () => {
               </div>
             </div>
 
-            <div className="p-3 rounded-lg bg-light-surface/60 dark:bg-dark-surface/60 border border-light-border dark:border-dark-border text-xs text-light-text-muted dark:text-dark-text-muted space-y-1">
-              <p>
-                <strong>Audit Compliance:</strong> Formatted to Indian GST and Ministry of Corporate Affairs (MCA) filing standards.
-              </p>
-              <p>
-                <strong>Authorized Signatory:</strong> Dhwanit Goswami, Vardaan Electronics Pvt. Ltd.
-              </p>
-            </div>
+            {previewLoading ? (
+              <div className="py-8 text-center text-xs text-light-text-muted dark:text-dark-text-muted">
+                Loading live report preview from database…
+              </div>
+            ) : reportPreview ? (
+              <div className="space-y-4">
+                {reportPreview.summary && Object.keys(reportPreview.summary).length > 0 && (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    {Object.entries(reportPreview.summary).map(([k, v]) => (
+                      <div key={k} className="p-2.5 rounded-lg bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border">
+                        <span className="block text-[10px] text-light-text-muted dark:text-dark-text-muted">{k}</span>
+                        <span className="text-xs font-bold text-light-text-primary dark:text-dark-text-primary">{String(v)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {Array.isArray(reportPreview.rows) && reportPreview.rows.length > 0 ? (
+                  <div className="max-h-64 overflow-auto border border-light-border dark:border-dark-border rounded-lg">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead className="bg-light-surface dark:bg-dark-surface sticky top-0">
+                        <tr>
+                          {(reportPreview.columns || []).map((col) => (
+                            <th key={col} className="px-3 py-2 font-semibold text-light-text-secondary dark:text-dark-text-secondary border-b border-light-border dark:border-dark-border whitespace-nowrap">
+                              {col}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-light-border dark:divide-dark-border">
+                        {reportPreview.rows.map((r, idx) => (
+                          <tr key={idx} className="hover:bg-light-surface/50 dark:hover:bg-dark-surface/50">
+                            {(reportPreview.columns || []).map((col) => (
+                              <td key={col} className="px-3 py-1.5 text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">
+                                {r[col] ?? '—'}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-xs text-light-text-muted dark:text-dark-text-muted">No matching rows found for this report scope.</p>
+                )}
+              </div>
+            ) : (
+              <div className="p-3 rounded-lg bg-light-surface/60 dark:bg-dark-surface/60 border border-light-border dark:border-dark-border text-xs text-light-text-muted dark:text-dark-text-muted space-y-1">
+                <p>
+                  <strong>Audit Compliance:</strong> Formatted to Indian GST and Ministry of Corporate Affairs (MCA) filing standards.
+                </p>
+                <p>
+                  <strong>Data Source:</strong> Live PostgreSQL ledger records.
+                </p>
+              </div>
+            )}
           </div>
         </Modal>
       )}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getUserProfile, updateUserProfile } from '../services/api';
+import { getUserProfile, updateUserProfile, getSessions, revokeSession } from '../services/api';
 import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
@@ -8,6 +8,8 @@ import { FiMail, FiPhone, FiMapPin, FiCalendar, FiClock, FiShield, FiCheckCircle
 
 const Profile = () => {
   const [profile, setProfile] = useState(null);
+  const [sessionsList, setSessionsList] = useState([]);
+  const [revokingId, setRevokingId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -18,8 +20,12 @@ const Profile = () => {
     setLoading(true);
     setError('');
     try {
-      const res = await getUserProfile();
+      const [res, sessRes] = await Promise.all([
+        getUserProfile(),
+        getSessions().catch(() => ({ data: [] })),
+      ]);
       setProfile(res.data);
+      setSessionsList(Array.isArray(sessRes.data) ? sessRes.data : []);
     } catch (err) {
       console.error('Error fetching profile data', err);
       setError('Unable to load profile data. Please check your connection and try again.');
@@ -60,16 +66,16 @@ const Profile = () => {
     }
   };
 
-  const handleRevokeSession = (indexToRevoke) => {
-    if (!profile?.security?.loginHistory) return;
-    const updatedHistory = profile.security.loginHistory.filter((_, i) => i !== indexToRevoke);
-    setProfile(prev => ({
-      ...prev,
-      security: {
-        ...prev.security,
-        loginHistory: updatedHistory,
-      }
-    }));
+  const handleRevokeSession = async (sessionId) => {
+    setRevokingId(sessionId);
+    try {
+      await revokeSession(sessionId);
+      setSessionsList(prev => prev.filter(s => s.id !== sessionId));
+    } catch (err) {
+      setSaveError(err?.response?.data?.detail || 'Failed to revoke session.');
+    } finally {
+      setRevokingId(null);
+    }
   };
 
   if (loading) {
@@ -108,9 +114,15 @@ const Profile = () => {
     );
   }
 
-  const sessions = profile?.security?.loginHistory || [
-    { device: 'Current Browser Session', location: 'Active Workspace', time: 'Just now', current: true }
-  ];
+  const sessions = sessionsList.length > 0
+    ? sessionsList.map((s, idx) => ({
+        id: s.id,
+        device: s.device_name || 'Web Browser',
+        location: s.ip_address || 'Active Workspace',
+        time: s.last_active || s.created_at || 'Recent',
+        current: idx === 0,
+      }))
+    : [{ id: 'current', device: 'Current Browser Session', location: 'Active Workspace', time: 'Just now', current: true }];
 
   return (
     <div className="space-y-6">
@@ -230,10 +242,11 @@ const Profile = () => {
                   ) : (
                     <button
                       type="button"
-                      onClick={() => handleRevokeSession(i)}
-                      className="text-danger hover:underline font-semibold transition-colors cursor-pointer"
+                      disabled={revokingId === sess.id}
+                      onClick={() => handleRevokeSession(sess.id)}
+                      className="text-danger hover:underline font-semibold transition-colors cursor-pointer disabled:opacity-50"
                     >
-                      Revoke
+                      {revokingId === sess.id ? 'Revoking…' : 'Revoke'}
                     </button>
                   )}
                 </div>

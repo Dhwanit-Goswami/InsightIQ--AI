@@ -12,7 +12,7 @@ def test_database_connection():
 
 
 def test_metadata_tables_discoverable():
-    """Verify that all 13 models are registered on Base.metadata."""
+    """Verify that all 16 models are registered on Base.metadata."""
     expected_tables = {
         "companies",
         "users",
@@ -27,10 +27,13 @@ def test_metadata_tables_discoverable():
         "reports",
         "ai_insights",
         "ai_recommendations",
+        "workspace_settings",
+        "password_reset_tokens",
+        "user_sessions",
     }
     registered_tables = set(Base.metadata.tables.keys())
     assert expected_tables.issubset(registered_tables)
-    assert len(registered_tables) == 13
+    assert len(registered_tables) == 16
 
 
 def test_database_schema_migrated():

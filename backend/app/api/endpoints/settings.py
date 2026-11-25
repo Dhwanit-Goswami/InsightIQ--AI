@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
 from app.core.database import get_db
@@ -39,8 +39,7 @@ class SettingsResponse(BaseModel):
     timezone: str
     currency: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 @router.get("", response_model=SettingsResponse)

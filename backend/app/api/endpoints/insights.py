@@ -1,7 +1,9 @@
 import uuid
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from decimal import Decimal
+from fastapi import APIRouter, Depends, HTTPException, Request, status, Query
 from sqlalchemy.orm import Session, joinedload
+from pydantic import BaseModel
 
 from app.core.database import get_db
 from app.core.security import get_current_user
@@ -10,8 +12,22 @@ from app.models.ai_insight import AIInsight
 from app.models.ai_recommendation import AIRecommendation
 from app.schemas.ai import AIInsightResponse, AIRecommendationResponse, AIRecommendationUpdate, AIInsightGenerateResponse
 from app.services.insights import InsightService
+from app.services.analytics import AnalyticsService
+from app.services.llm_assistant import get_llm_response
+from app.core.config import settings
 
 router = APIRouter()
+
+
+class ChatRequest(BaseModel):
+    message: str
+
+
+class ChatResponse(BaseModel):
+    response: str
+    source: str
+    powered_by_llm: bool
+    fallback_reason: Optional[str] = None
 
 
 @router.get("", response_model=List[AIInsightResponse])
@@ -160,3 +176,47 @@ def update_recommendation(
     db.commit()
     db.refresh(rec)
     return AIRecommendationResponse.model_validate(rec)
+
+
+@router.post("/chat", response_model=ChatResponse)
+def ai_chat(
+    payload: ChatRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    AI Assistant chat endpoint powered by Google Gemini 1.5 Flash.
+    Injects live company KPI context into the prompt.
+    Falls back to deterministic responses if GEMINI_API_KEY is not configured.
+    """
+    if not payload.message or len(payload.message.strip()) < 2:
+        raise HTTPException(status_code=400, detail="Message is too short.")
+
+    # Gather live KPI context (90-day window)
+    try:
+        overview = AnalyticsService.get_dashboard_overview(db, current_user.company_id, days=90)
+        kpis = overview.get("kpis", {})
+        top_products = overview.get("top_products", [])
+        inventory = overview.get("inventory_summary", {})
+
+        kpi_context = {
+            "company_name": current_user.company.name if current_user.company else "Your Company",
+            "revenue_formatted": kpis.get("revenue", {}).get("formatted_value", "N/A"),
+            "profit_formatted": kpis.get("net_profit", {}).get("formatted_value", "N/A"),
+            "profit_margin": kpis.get("profit_margin", {}).get("value", 0),
+            "total_customers": int(kpis.get("customers", {}).get("value", 0)),
+            "order_count": int(kpis.get("orders", {}).get("value", 0)),
+            "low_stock_count": inventory.get("low_stock_count", 0),
+            "top_product_name": top_products[0]["name"] if top_products else "N/A",
+        }
+    except Exception:
+        kpi_context = {"company_name": "Your Company"}
+
+    api_key = getattr(settings, "GEMINI_API_KEY", None) or None
+
+    result = get_llm_response(
+        user_message=payload.message.strip(),
+        kpi_context=kpi_context,
+        api_key=api_key,
+    )
+    return ChatResponse(**result)

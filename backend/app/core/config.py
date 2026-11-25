@@ -26,6 +26,18 @@ class Settings(BaseSettings):
     ]
     API_V1_PREFIX: str = "/api/v1"
 
+    # Email (password reset) — optional; falls back to console logging
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM_EMAIL: str = "noreply@insightiq.ai"
+    FRONTEND_URL: str = "http://localhost:5173"
+
+    # LLM Integration — optional; falls back to deterministic engine
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-1.5-flash"
+
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def assemble_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:

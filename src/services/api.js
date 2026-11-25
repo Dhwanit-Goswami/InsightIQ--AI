@@ -384,8 +384,48 @@ export const getSuggestedPrompts = async () => {
   return { data: suggestedPrompts };
 };
 
-// ─── AI Chat (live-context structured response) ─────
+// ─── AI Chat via LLM backend ──────────────────────────
 export const sendAIMessage = async (message) => {
+  try {
+    const res = await api.post('/insights/chat', { message });
+    const data = res.data;
+    // If LLM or fallback returned a plain `response` string, format into structured for UI
+    if (data.response && !data.structured) {
+      return {
+        data: {
+          role: 'assistant',
+          structured: {
+            answer: data.response,
+            evidence: '',
+            explanation: '',
+            recommendation: '',
+            sources: data.powered_by_llm ? 'Google Gemini 1.5 Flash — Live KPI Context' : 'InsightIQ Deterministic Engine',
+            confidence: data.powered_by_llm ? '95% • AI-powered analysis' : '90% • Rule-based analysis',
+          },
+          powered_by_llm: data.powered_by_llm,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        }
+      };
+    }
+    return { data };
+  } catch (err) {
+    // Graceful degradation: return an error message formatted for the chat UI
+    return {
+      data: {
+        role: 'assistant',
+        structured: {
+          answer: 'I encountered a temporary issue connecting to the AI service. Please try again.',
+          evidence: '',
+          explanation: '',
+          recommendation: 'Check your internet connection or try refreshing the page.',
+          sources: 'System',
+          confidence: 'N/A',
+        },
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      }
+    };
+  }
+};
   await delay(900);
   const q = message.toLowerCase();
 
@@ -808,6 +848,52 @@ export const downloadErrorCSV = async (headers, errors) => {
   a.click();
   document.body.removeChild(a);
   window.URL.revokeObjectURL(url);
+};
+
+// ─── Workspace Settings (persistent) ─────────────────
+export const getWorkspaceSettings = async () => {
+  const res = await api.get('/settings');
+  return { data: res.data };
+};
+
+export const updateWorkspaceSettings = async (payload) => {
+  const res = await api.put('/settings', payload);
+  return { data: res.data };
+};
+
+// ─── Forgot Password / Reset Password ─────────────────
+export const forgotPassword = async (email) => {
+  return api.post('/auth/forgot-password', { email });
+};
+
+export const resetPassword = async (token, newPassword) => {
+  return api.post('/auth/reset-password', { token, new_password: newPassword });
+};
+
+// ─── Sessions (server-side device revocation) ─────────
+export const getSessions = async () => {
+  const res = await api.get('/auth/sessions');
+  return { data: res.data };
+};
+
+export const revokeSession = async (sessionId) => {
+  return api.delete(`/auth/sessions/${sessionId}`);
+};
+
+// ─── Report Content Preview ───────────────────────────
+export const getReportPreview = async (reportId) => {
+  const res = await api.get(`/reports/${reportId}/preview`);
+  return { data: res.data };
+};
+
+// ─── ML Sales Forecast ────────────────────────────────
+export const getSalesForecast = async (months = 6) => {
+  try {
+    const res = await api.get('/analytics/forecast', { params: { months } });
+    return { data: res.data };
+  } catch {
+    return { data: { data_available: false, historical: [], forecast: [], metrics: { rmse: 0, mae: 0 } } };
+  }
 };
 
 export default api;

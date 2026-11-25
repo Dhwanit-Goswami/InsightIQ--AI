@@ -11,3 +11,10 @@ httpx>=0.27.0
 bcrypt>=4.0.0
 pyjwt>=2.8.0
 email-validator>=2.0.0
+# ML Forecasting
+numpy>=1.26.0
+pandas>=2.1.0
+statsmodels>=0.14.0
+scikit-learn>=1.4.0
+# LLM Integration (optional — graceful fallback if absent)
+google-generativeai>=0.7.0

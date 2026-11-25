@@ -1,0 +1,70 @@
+version: '3.9'
+
+services:
+  # ─── PostgreSQL Database ──────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: insightiq_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: decision_intelligence
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: InsightIQ2026
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d decision_intelligence"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── FastAPI Backend ──────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: insightiq_backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      APP_NAME: "AI Decision Intelligence Platform API"
+      APP_ENV: production
+      DEBUG: "false"
+      DATABASE_URL: "postgresql+psycopg://postgres:InsightIQ2026@db:5432/decision_intelligence"
+      SECRET_KEY: "${SECRET_KEY:-change-this-in-production-at-least-32-bytes-long-key-string}"
+      CORS_ORIGINS: "http://localhost,http://localhost:80"
+      API_V1_PREFIX: "/api/v1"
+      FRONTEND_URL: "http://localhost"
+      # Optional — set in .env file for real email delivery
+      SMTP_HOST: "${SMTP_HOST:-}"
+      SMTP_PORT: "${SMTP_PORT:-587}"
+      SMTP_USER: "${SMTP_USER:-}"
+      SMTP_PASSWORD: "${SMTP_PASSWORD:-}"
+      SMTP_FROM_EMAIL: "${SMTP_FROM_EMAIL:-noreply@insightiq.ai}"
+      # Optional — set in .env file for Gemini LLM
+      GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
+      GEMINI_MODEL: "gemini-1.5-flash"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+
+  # ─── React Frontend (Nginx) ───────────────────────────────────────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: insightiq_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+
+volumes:
+  postgres_data:
+    name: insightiq_postgres_data

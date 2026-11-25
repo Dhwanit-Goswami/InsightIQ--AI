@@ -25,6 +25,9 @@ class User(Base):
     company = relationship("Company", back_populates="users")
     employee = relationship("Employee", back_populates="user")
     reports_generated = relationship("Report", back_populates="generator")
+    workspace_settings = relationship("WorkspaceSettings", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    password_reset_tokens = relationship("PasswordResetToken", back_populates="user", cascade="all, delete-orphan")
+    sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<User id={self.id} email='{self.email}' role='{self.role}'>"

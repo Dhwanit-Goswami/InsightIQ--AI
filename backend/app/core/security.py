@@ -65,9 +65,12 @@ def get_current_user(
 ):
     """
     FastAPI dependency to retrieve the current authenticated User.
-    Supports Bearer token authentication.
+    Validates JWT signature, checks jti revocation in user_sessions table,
+    and returns the User ORM object with the company relationship loaded.
     """
     from app.models.user import User
+    from app.models.user_session import UserSession
+    from sqlalchemy.orm import joinedload
 
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -91,7 +94,30 @@ def get_current_user(
     except ValueError:
         raise credentials_exception
 
-    user = db.query(User).filter(User.id == user_id).first()
+    # Check server-side session revocation (if jti is present in token)
+    jti = payload.get("jti")
+    if jti:
+        session = db.query(UserSession).filter(UserSession.jti == jti).first()
+        if session and session.is_revoked:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Session has been revoked. Please log in again.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        # Update last_active on each request (lightweight)
+        if session:
+            session.last_active = datetime.now(timezone.utc)
+            try:
+                db.commit()
+            except Exception:
+                db.rollback()
+
+    user = (
+        db.query(User)
+        .options(joinedload(User.company))
+        .filter(User.id == user_id)
+        .first()
+    )
     if user is None:
         raise credentials_exception
 

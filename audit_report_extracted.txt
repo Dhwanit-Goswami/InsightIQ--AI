@@ -1,0 +1,907 @@
+PROJECT AUDIT REPORT: AI-POWERED DECISION INTELLIGENCE PLATFORM FOR SMES
+Audit Date: November 2026Repository: InsightIQ--AI-mainAudit Scope: Complete codebase inspection (Architecture, Frontend, Backend, Database, CSV Pipelines, AI/ML Services, Security, Deployment)Execution Mode: Strict read-only verification (no files modified, created, or deleted).
+A. Executive Summary
+This codebase is NOT a dataset upload and analysis tool. There is no CSV/dataset upload pipeline, no machine learning model, and no external Large Language Model (LLM) API integration anywhere in the project.
+Instead, what has actually been built is a full-stack multi-tenant SME Enterprise Resource Planning (ERP) and Business Intelligence (BI) Dashboard:
+Frontend: A modern, single-page React 19 application configured with Tailwind CSS, Recharts, and React Router v7. It implements an ERP UI with modules for Sales, Inventory, Customers, Expenses, Analytics, Reports, Company Profile, Settings, and an AI chat assistant.
+Backend: A modular Python FastAPI backend (/api/v1) with 14 endpoint groups, JWT authentication, bcrypt password hashing, and role-based access control.
+Database: A relational schema implemented with SQLAlchemy ORM and Alembic migrations targeting PostgreSQL (13 relational tables), accompanied by a database seeding script (seed.py).
+"AI" & Decision Intelligence Reality: 
+The "AI Insights" are generated via deterministic SQL heuristics and static threshold rules (e.g., if revenue growth exceeds 5%, an insight record is created with a hardcoded 94.50 confidence score).
+The "AI Assistant" chat is a client-side JavaScript regex/keyword matcher executing in the browser (sendAIMessage in api.js). It queries summary numbers from the backend KPI endpoint and injects them into pre-written response templates.
+CSV Reality: 
+CSV Upload does not exist anywhere in the code. There is no <input type="file">, no file upload parser (e.g., PapaParse), no backend file handling route (UploadFile), and no Pandas data processing.
+The only CSV functionality is CSV Export (downloading in-memory table records as .csv files using client-side Blob generation).
+B. Actual Technology Stack
+Layer
+Technology
+Version / Specification
+Verification Source
+Frontend Framework
+React
+^19.2.8
+package.json
+Frontend DOM
+React DOM
+^19.2.8
+package.json
+Build Tool & Dev Server
+Vite
+^8.2.0
+package.json
+Routing
+React Router DOM
+^7.18.2
+package.json
+Styling & CSS Framework
+Tailwind CSS + PostCSS + Autoprefixer
+tailwindcss: ^3.4.19, postcss: ^8.5.26
+package.json
+UI Icons
+React Icons
+^5.7.0 (Feather Icons pack fi)
+package.json
+Charting Library
+Recharts
+^3.10.1
+package.json
+HTTP Client
+Axios
+^1.19.0
+package.json
+Linter
+Oxlint
+^1.75.0
+package.json
+Backend Framework
+FastAPI (Python)
+>=0.110.0
+backend/requirements.txt
+ASGI Server
+Uvicorn (standard)
+>=0.28.0
+backend/requirements.txt
+Data Validation
+Pydantic & Pydantic Settings
+pydantic>=2.6.0, pydantic-settings>=2.2.0
+backend/requirements.txt
+Database ORM
+SQLAlchemy
+>=2.0.0
+backend/requirements.txt
+Database Driver
+Psycopg 3
+>=3.1.18 (postgresql+psycopg)
+backend/requirements.txt
+Database Migrations
+Alembic
+>=1.13.0
+backend/requirements.txt
+Database Engine
+PostgreSQL
+Relational target (port 5432)
+backend/.env.example
+Auth & Security
+PyJWT & Bcrypt
+pyjwt>=2.8.0, bcrypt>=4.0.0
+backend/requirements.txt
+Backend Testing
+Pytest & HTTPX
+pytest>=8.0.0, httpx>=0.27.0
+backend/requirements.txt
+AI / ML Libraries
+NONE
+None present in codebase
+Verified via recursive inspection
+File Upload Libraries
+NONE
+None present in codebase
+Verified via recursive inspection
+Deployment / Container
+NONE
+No Dockerfile, no cloud configs
+Verified via root inspection
+C. Project Structure
+InsightIQ--AI-main/
+├── backend/                                # FastAPI Python backend service
+│   ├── .env.example                        # Template for backend environment variables
+│   ├── .gitignore                          # Backend gitignore rules
+│   ├── alembic.ini                         # Alembic migration configuration
+│   ├── README.md                           # Backend setup documentation
+│   ├── requirements.txt                    # Python dependencies
+│   ├── alembic/                            # Database schema migration versions
+│   │   ├── env.py                          # Alembic runtime environment
+│   │   ├── script.py.mako                  # Migration generation template
+│   │   └── versions/
+│   │       └── 06c83e6b5379_create_initial_database_schema.py # Creates 13 PostgreSQL tables
+│   ├── app/
+│   │   ├── __init__.py
+│   │   ├── main.py                         # FastAPI application entry point, CORS, and lifespans
+│   │   ├── api/
+│   │   │   ├── router.py                   # Central API router registering all endpoints
+│   │   │   └── endpoints/                  # Route handlers for individual business domains
+│   │   │       ├── analytics.py            # Overview, revenue, expenses, and top products
+│   │   │       ├── auth.py                 # Registration, login, /me token validation
+│   │   │       ├── companies.py            # Organization metadata endpoints
+│   │   │       ├── customers.py            # Customer CRUD
+│   │   │       ├── dashboard.py            # High-level aggregated overview KPIs
+│   │   │       ├── employees.py            # Employee directory endpoints
+│   │   │       ├── expenses.py             # Expense ledger CRUD
+│   │   │       ├── insights.py             # Rule-based insight generation & recommendations
+│   │   │       ├── inventory.py            # Stock registry & low-stock alerts
+│   │   │       ├── metrics.py              # Custom business metrics time-series
+│   │   │       ├── products.py             # Product catalog CRUD
+│   │   │       ├── reports.py              # Report catalog & generation metadata
+│   │   │       ├── sales.py                # Sales journal CRUD
+│   │   │       └── users.py                # User profile management
+│   │   ├── core/
+│   │   │   ├── config.py                   # Pydantic Settings & environment variable validation
+│   │   │   ├── database.py                 # SQLAlchemy engine, session maker, get_db dependency
+│   │   │   └── security.py                 # JWT encode/decode, bcrypt hashing, OAuth2 dependency
+│   │   ├── models/                         # SQLAlchemy 2.0 ORM database entity classes
+│   │   │   ├── ai_insight.py               # ai_insights table model
+│   │   │   ├── ai_recommendation.py        # ai_recommendations table model
+│   │   │   ├── business_metric.py          # business_metrics table model
+│   │   │   ├── company.py                  # companies table model
+│   │   │   ├── customer.py                 # customers table model
+│   │   │   ├── employee.py                 # employees table model
+│   │   │   ├── expense.py                  # expenses table model
+│   │   │   ├── inventory.py                # inventory table model
+│   │   │   ├── product.py                  # products table model
+│   │   │   ├── report.py                   # reports table model
+│   │   │   ├── sale.py                     # sales table model
+│   │   │   ├── sale_item.py                # sale_items line-item table model
+│   │   │   └── user.py                     # users table model
+│   │   ├── schemas/                        # Pydantic validation schemas (request/response models)
+│   │   ├── services/                       # Business logic services
+│   │   │   ├── analytics.py                # SQL metric aggregations (growth %, AOV, margins)
+│   │   │   └── insights.py                 # Rule-based threshold evaluation engine
+│   │   └── utils/
+│   │       └── seed.py                     # 642-line database seeding script with sample SME records
+│   └── tests/                              # Automated test suite
+│       ├── test_database.py                # Connection and schema verification tests
+│       ├── test_main.py                    # Root & health endpoint tests
+│       ├── test_security_phase1.py         # Auth & security tests
+│       ├── verify_phase2.py                # PostgreSQL analytics calculation test
+│       └── verify_master_completion.py     # Master CRUD and workflow verification test
+├── public/                                 # Static assets (favicons, SVG icons)
+├── scripts/
+│   └── verify_ui_e2e.cjs                   # Headless Chrome CDP automation test script
+├── src/                                    # Frontend React application
+│   ├── App.css                             # Minor base layout styles
+│   ├── App.jsx                             # Shell wrapper
+│   ├── index.css                           # Tailwind directive imports
+│   ├── main.jsx                            # React entry point, mounting Providers (Auth, Theme, Router)
+│   ├── assets/                             # Image assets (hero.png, vite.svg)
+│   ├── components/
+│   │   ├── charts/                         # Recharts widgets (Area, Line, Bar, Donut, Radar)
+│   │   ├── common/                         # ErrorBoundary component
+│   │   ├── layout/                         # Shell chrome: Topbar, Sidebar, UserDropdown, NotificationMenu
+│   │   └── ui/                             # Reusable design components: StatCard, Modal, Table, etc.
+│   ├── constants/
+│   │   └── colors.js                       # Theme palette hex codes
+│   ├── context/
+│   │   ├── AuthContext.jsx                 # JWT token state management, login/logout, 401 listeners
+│   │   └── ThemeContext.jsx                # Light/Dark mode state management & localStorage sync
+│   ├── data/                               # Static mock datasets (used as fallback and in demo mode)
+│   │   ├── mockAI.js                       # Mock insights, mock health scores, mock chat history
+│   │   ├── mockAnalytics.js                # Mock revenue trends, customer growth, radar data
+│   │   ├── mockCompany.js                  # Mock company profile
+│   │   ├── mockDashboard.js                # Mock KPI cards, recent activity, quick actions
+│   │   ├── mockReports.js                  # Mock report documents list
+│   │   └── mockUser.js                     # Mock user profile
+│   ├── layouts/
+│   │   └── AppLayout.jsx                   # Protected shell layout (Sidebar + Topbar + Main container)
+│   ├── pages/                              # Page views mapped to application routes
+│   │   ├── AIAssistant.jsx                 # Chat UI with AI Analyst (keyword-template driven)
+│   │   ├── AIInsights.jsx                  # Cards displaying active insights & recommendations
+│   │   ├── Analytics.jsx                   # Financial trends, expense donuts, product performance
+│   │   ├── Company.jsx                     # Corporate structure, departments, goals
+│   │   ├── Customers.jsx                   # Customer table with Add/Edit/Delete modal & CSV export
+│   │   ├── Dashboard.jsx                   # Executive KPI summary, primary insight, recent activity
+│   │   ├── Expenses.jsx                    # Expense journal with Add/Delete modal & CSV export
+│   │   ├── Inventory.jsx                   # Stock inventory table with Adjust Stock modal & CSV export
+│   │   ├── Landing.jsx                     # 700-line marketing landing page
+│   │   ├── Profile.jsx                     # User settings, name update, session devices
+│   │   ├── Reports.jsx                     # Report catalog with Create Report modal & CSV export
+│   │   ├── Sales.jsx                       # Sales order journal with Add Sale modal & CSV export
+│   │   ├── Settings.jsx                    # Workspace configuration toggles (stored in localStorage)
+│   │   └── auth/
+│   │       ├── ForgotPassword.jsx          # UI-only password recovery mock form
+│   │       ├── Login.jsx                   # Login form calling /api/v1/auth/login
+│   │       └── Signup.jsx                  # Workspace onboarding calling /api/v1/auth/register
+│   ├── routes/
+│   │   └── index.jsx                       # Route configuration & ProtectedRoute wrappers
+│   ├── services/
+│   │   └── api.js                          # Axios instance, interceptors, and 753 lines of API methods
+│   ├── styles/
+│   │   └── globals.css                     # Custom component utility classes & animations
+│   └── utils/
+│       └── exportUtils.js                  # Client-side dynamic CSV string generator and Blob downloader
+├── index.html                              # Single-page HTML host document
+├── package.json                            # Frontend npm manifest
+├── postcss.config.js                       # PostCSS configuration
+├── tailwind.config.js                      # Custom design system, color tokens, and font setup
+└── vite.config.js                          # Vite configuration with `/api` reverse proxy to port 8000
+D. Feature-by-Feature Audit
+Feature
+UI Exists?
+Actual Implementation
+Data Source
+Status
+Relevant Files
+User Registration
+Yes
+Full form; creates Company and User with role 'owner' and returns JWT
+PostgreSQL via API
+WORKING
+Signup.jsx, auth.py
+User Login
+Yes
+Submits credentials, verifies bcrypt hash, stores JWT & user in localStorage
+PostgreSQL via API
+WORKING
+Login.jsx, AuthContext.jsx, auth.py
+Forgot Password
+Yes
+Form with 800ms setTimeout that sets state to success: true. No email or API call exists
+Simulated state
+UI ONLY
+ForgotPassword.jsx
+Marketing Landing Page
+Yes
+Static product preview, capability list, pricing tiers, and interactive dark-mode toggle
+Static HTML/JSX
+WORKING
+Landing.jsx
+Executive Dashboard
+Yes
+Fetches live KPIs (Revenue, Profit, Expenses, Orders, Health), revenue chart, and recent activity
+Live PostgreSQL (or Mock fallback)
+WORKING
+Dashboard.jsx, dashboard.py, analytics.py
+Financial Analytics
+Yes
+Period-filtered charts for revenue trends, expense breakdowns, and top products table
+Live PostgreSQL (or Mock fallback)
+WORKING
+Analytics.jsx, analytics.py
+Secondary Analytics (Customer Growth, Radar)
+Yes
+Customer Growth line chart, Performance Radar, and Quarterly Comparison charts
+Static Mock Data (mockAnalytics.js) with artificial delays
+MOCKED
+Analytics.jsx, api.js
+Customer Management
+Yes
+Table with search, sector filter, Create Customer modal, Update, and Delete actions
+PostgreSQL via /api/v1/customers
+WORKING
+Customers.jsx, customers.py
+Sales Order Journal
+Yes
+Order history table, metrics summary, Add Sale modal linked to products/customers
+PostgreSQL via /api/v1/sales
+WORKING
+Sales.jsx, sales.py
+Inventory Management
+Yes
+SKU listing, category breakdown donut, Add Product modal, Adjust Stock modal
+PostgreSQL via /api/v1/inventory & /products
+WORKING
+Inventory.jsx, inventory.py
+Expense Tracking
+Yes
+Expense log table, category distribution donut, Add Expense modal, Delete action
+PostgreSQL via /api/v1/expenses
+WORKING
+Expenses.jsx, expenses.py
+Reports Catalog
+Yes
+Searchable table of reports, Create Report modal, dynamic CSV export generation
+PostgreSQL via /api/v1/reports
+WORKING
+Reports.jsx, reports.py
+CSV / Dataset Upload
+NO
+Completely absent. No file picker, no drag-drop, no parser, no endpoint
+None
+BROKEN / ABSENT
+Entire codebase
+CSV Data Export
+Yes
+Converts visible table rows into CSV strings and downloads a client-side Blob
+Client memory / API response
+WORKING
+exportUtils.js
+AI Insights Generation
+Yes
+Evaluates SQL numbers against fixed thresholds; creates AIInsight and AIRecommendation
+PostgreSQL SQL logic
+PARTIALLY WORKING (Rule-based)
+AIInsights.jsx, insights.py
+AI Assistant (Chat)
+Yes
+Interactive chat interface; matches keywords (revenue, product, expense, risk) in JS
+Client-side template + API KPI numbers
+MOCKED / HEURISTIC
+AIAssistant.jsx, api.js
+Company Profile
+Yes
+View organization info, headcount, address, and goals
+PostgreSQL /companies/{id} & /employees
+WORKING
+Company.jsx, companies.py
+User Profile Management
+Yes
+Displays user details, joined date, and updates name via PUT /api/v1/users/me
+PostgreSQL /users/me
+WORKING
+Profile.jsx, users.py
+Workspace Settings
+Yes
+Toggles for weekly digest, AI alerts, push notifications
+localStorage only (no backend endpoint)
+PARTIALLY WORKING
+Settings.jsx
+Global Search (Ctrl+K)
+Yes
+Opens search input; navigating forwards to /analytics?search=...
+Query param in React state
+WORKING
+Topbar.jsx
+Notification Center
+Yes
+Polls /inventory and /sales to show low-stock alerts and settled orders
+PostgreSQL live queries
+WORKING
+NotificationMenu.jsx
+E. Frontend Audit
+Architecture & Routing
+The frontend is structured around React Router v7 (BrowserRouter) with code-splitting via React.lazy and Suspense with an animated PageLoader. All application routes except /, /login, /signup, and /forgot-password are guarded by a ProtectedRoute component that verifies JWT existence in localStorage.
+Real Operations vs. Mock Interactions
+Forms with Genuine CRUD: 
+Signup.jsx: Posts to /api/v1/auth/register, creating real records in the database.
+Login.jsx: Posts to /api/v1/auth/login, validates credentials, stores token, and navigates.
+Customers.jsx: Modal form performs actual HTTP POST to /api/v1/customers and DELETE to /api/v1/customers/{id}.
+Sales.jsx: Form reads live customer and product lists to populate dropdowns, calculating line totals and executing POST /api/v1/sales.
+Inventory.jsx: "Add Product" creates both a product row and an inventory row via POST /api/v1/products?initial_stock=.... "Adjust Stock" executes PUT /api/v1/inventory/{id}.
+Expenses.jsx: Form executes POST /api/v1/expenses and DELETE /api/v1/expenses/{id}.
+Reports.jsx: "Create Report" modal executes POST /api/v1/reports.
+Profile.jsx: "Save Preferences" executes PUT /api/v1/users/me.
+Forms/Buttons that are Pure UI or Mocked: 
+ForgotPassword.jsx: Clicking "Send Reset Link" runs an 800ms setTimeout and toggles a success message with no network activity.
+Settings.jsx: "Save Preferences" serializes toggles into browser localStorage (insightiq_workspace_settings); it never contacts any backend server.
+Profile.jsx "Revoke Device": Filters an in-memory array in component state; no session revocation endpoint exists.
+Reports.jsx "View Report" modal: Displays hardcoded metadata cards rather than rendered document contents.
+Charts & Visualization Data Sources: 
+Dashboard.jsx: Area chart for revenue and donut chart for expenses are populated from real backend API calls (/dashboard/overview).
+Analytics.jsx: The primary monthly revenue trend and expense breakdown are live from /analytics/overview. However, the secondary tabs ("Customer Growth", "Performance Radar", and "Quarterly Comparison") fall back to hardcoded arrays in src/data/mockAnalytics.js with simulated network delays (delay(300)).
+Error & Loading Handling: 
+Error boundaries wrap both the top-level route tree and individual protected layouts (ErrorBoundary.jsx).
+Skeletons and shimmer animations are displayed during loading states.
+Axios interceptors catch HTTP 401 errors, purge local credentials, and dispatch an auth:unauthorized window event that redirects the user to /login.
+F. Backend Audit
+The backend is built with FastAPI and organized into standard controller, model, schema, and service tiers.
+Backend Endpoints Table
+Method
+Endpoint
+Purpose
+Implementation Status
+Called by Frontend?
+GET
+/
+Root health check & API metadata
+WORKING
+No (System verification)
+GET
+/api/v1/health
+Service health status check
+WORKING
+No (Health probes)
+POST
+/api/v1/auth/register
+Register new company & owner user
+WORKING
+Yes (Signup.jsx)
+POST
+/api/v1/auth/login
+Authenticate user & issue JWT
+WORKING
+Yes (Login.jsx)
+GET
+/api/v1/auth/me
+Fetch current user & company context
+WORKING
+Yes (Profile.jsx, Company.jsx)
+GET
+/api/v1/companies/current
+Retrieve current user's company
+WORKING
+No (uses /companies/{id})
+GET
+/api/v1/companies/{id}
+Get company details by UUID
+WORKING
+Yes (Company.jsx)
+PUT
+/api/v1/companies/{id}
+Update company details (Admin/Owner)
+WORKING
+No
+GET
+/api/v1/users
+List company users
+WORKING
+No
+POST
+/api/v1/users
+Create user under company
+WORKING
+No
+PUT
+/api/v1/users/me
+Update authenticated user profile
+WORKING
+Yes (Profile.jsx)
+GET
+/api/v1/users/{id}
+Get specific user by UUID
+WORKING
+No
+PUT
+/api/v1/users/{id}
+Update specific user by UUID
+WORKING
+No
+GET
+/api/v1/employees
+List company employees
+WORKING
+Yes (Company.jsx)
+POST
+/api/v1/employees
+Create employee record
+WORKING
+No
+GET
+/api/v1/employees/{id}
+Get employee by UUID
+WORKING
+No
+PUT
+/api/v1/employees/{id}
+Update employee by UUID
+WORKING
+No
+DELETE
+/api/v1/employees/{id}
+Delete employee record
+WORKING
+No
+GET
+/api/v1/customers
+List company customers
+WORKING
+Yes (Customers.jsx, Sales.jsx)
+POST
+/api/v1/customers
+Create new customer
+WORKING
+Yes (Customers.jsx)
+GET
+/api/v1/customers/{id}
+Get customer by UUID
+WORKING
+No
+PUT
+/api/v1/customers/{id}
+Update customer by UUID
+WORKING
+Yes (Customers.jsx)
+DELETE
+/api/v1/customers/{id}
+Delete customer by UUID
+WORKING
+Yes (Customers.jsx)
+GET
+/api/v1/products
+List company products
+WORKING
+Yes (Sales.jsx)
+POST
+/api/v1/products
+Create product (auto-creates inventory)
+WORKING
+Yes (Inventory.jsx)
+GET
+/api/v1/products/{id}
+Get product by UUID
+WORKING
+No
+PUT
+/api/v1/products/{id}
+Update product by UUID
+WORKING
+No
+DELETE
+/api/v1/products/{id}
+Delete product by UUID
+WORKING
+No
+GET
+/api/v1/inventory
+List stock records with nested product
+WORKING
+Yes (Inventory.jsx, Dashboard.jsx)
+GET
+/api/v1/inventory/low-stock
+List items below reorder threshold
+WORKING
+No (computed on frontend)
+PUT
+/api/v1/inventory/{id}
+Update stock quantity & location
+WORKING
+Yes (Inventory.jsx)
+GET
+/api/v1/sales
+List sales orders with customer & items
+WORKING
+Yes (Sales.jsx, Reports.jsx)
+POST
+/api/v1/sales
+Create sale order & update inventory stock
+WORKING
+Yes (Sales.jsx)
+GET
+/api/v1/sales/{id}
+Get sale by UUID
+WORKING
+No
+PUT
+/api/v1/sales/{id}
+Update sale order by UUID
+WORKING
+No
+GET
+/api/v1/expenses
+List company expenses
+WORKING
+Yes (Expenses.jsx, Reports.jsx)
+POST
+/api/v1/expenses
+Record new expense entry
+WORKING
+Yes (Expenses.jsx)
+GET
+/api/v1/expenses/{id}
+Get expense by UUID
+WORKING
+No
+PUT
+/api/v1/expenses/{id}
+Update expense by UUID
+WORKING
+No
+DELETE
+/api/v1/expenses/{id}
+Delete expense entry
+WORKING
+Yes (Expenses.jsx)
+GET
+/api/v1/metrics
+List time-series metrics
+WORKING
+No
+POST
+/api/v1/metrics
+Create time-series metric
+WORKING
+No
+GET
+/api/v1/reports
+List generated reports catalog
+WORKING
+Yes (Reports.jsx)
+POST
+/api/v1/reports
+Record new report metadata entry
+WORKING
+Yes (Reports.jsx)
+GET
+/api/v1/reports/{id}
+Get report metadata by UUID
+WORKING
+No
+GET
+/api/v1/dashboard/overview
+Aggregated revenue, profit, orders, AOV
+WORKING
+Yes (Dashboard.jsx, AIAssistant.jsx)
+GET
+/api/v1/analytics/overview
+Monthly trends, expense & inventory sums
+WORKING
+Yes (Analytics.jsx)
+GET
+/api/v1/analytics/revenue
+Revenue time-series analytics
+WORKING
+No
+GET
+/api/v1/analytics/expenses
+Expense categories breakdown
+WORKING
+No
+GET
+/api/v1/analytics/products
+Top products by sales volume & growth
+WORKING
+Yes (Analytics.jsx)
+GET
+/api/v1/insights
+List generated business insights
+WORKING
+Yes (AIInsights.jsx, Dashboard.jsx)
+POST
+/api/v1/insights/generate
+Trigger rule-based insight generator
+WORKING
+Yes (api.js on mount)
+GET
+/api/v1/insights/{id}
+Get specific insight by UUID
+WORKING
+No
+PATCH
+/api/v1/insights/{id}/read
+Mark insight as read
+WORKING
+No
+GET
+/api/v1/insights/recommendations/all
+List all insight recommendations
+WORKING
+Yes (AIInsights.jsx)
+PUT
+/api/v1/insights/recommendations/{id}
+Update recommendation status
+WORKING
+No
+G. Database Audit
+Direct Answers to Required Database Questions:
+Is a database actually configured?Yes. PostgreSQL is explicitly configured using SQLAlchemy 2.0 with the Psycopg 3 driver in database.py and config.py.
+Is there a database connection implementation?Yes. create_engine with pool_pre_ping=True and a get_db() session generator are implemented in database.py.
+Are any tables defined?Yes, exactly 13 relational tables are defined in code and backed by an Alembic migration: 
+companies
+users
+employees
+customers
+products
+inventory
+sales
+sale_items
+expenses
+business_metrics
+reports
+ai_insights
+ai_recommendations
+Is the application actually saving user data?Yes. When running connected to PostgreSQL, user signups, profile changes, products, sales, inventory adjustments, customers, expenses, and generated insights are written to PostgreSQL tables via SQLAlchemy db.add() and db.commit().
+Where are users, datasets, uploaded files, and analysis results stored? 
+Users: users table in PostgreSQL.
+Datasets / Uploaded files: Nowhere. File uploads do not exist in the architecture.
+Analysis results: Stored in the ai_insights and ai_recommendations tables in PostgreSQL.
+Does the data persist after refreshing/restarting the application? 
+When connected to PostgreSQL: Yes, all committed rows persist.
+When running in frontend-only/demo mode: Data changes only persist within localStorage for authentication and settings; other mock lists reset on reload.
+Is PostgreSQL being used, or was it only part of the original plan?PostgreSQL is actively implemented in the backend code and is not just a plan. However, it is not currently running as an embedded or active service, and there is no .env file present in the repo to supply the connection string.
+H. Dataset Upload & Processing
+Investigation Findings
+Supported file types: None. There is no file input anywhere in the application.
+Is CSV supported?: Only for export (download). CSV upload does not exist.
+File size limits / validation / cleaning: None, because there is no ingestion endpoint.
+Data parsing library: Neither PapaParse, nor SheetJS, nor Pandas, nor Python's standard csv library is used for file ingestion.
+Data storage for uploads: Does not exist.
+Actual Data Ingestion Flow vs. Assumed Flow
+Assumed Flow:CSV Upload → File Parsing → Data Cleaning → ML Processing → Insights
+Actual Flow:Manual Form Input (Modal) → JSON Payload → FastAPI Route → SQLAlchemy ORM → PostgreSQL Table
+Users populate data by manually typing entries into modal dialogs (e.g., "Add Client", "New Sale Order", "Add Product", "Log Expense"), which save discrete records to relational tables.
+I. AI / Machine Learning Audit — CRITICAL
+Direct Answers to Required AI/ML Questions:
+Does the project use a real AI model?No.
+Is an external LLM API being called (OpenAI, Gemini, Anthropic, Groq, Ollama)?No. There are zero API calls or SDKs for any AI provider.
+Is there an actual machine learning model?No.
+Is any model trained by this project?No.
+Is a pretrained model being used?No.
+Is there any model file such as .pkl, .joblib, .pt, .pth, .onnx?No. A search across the entire filesystem yielded zero model binary files.
+Does the application perform statistical analysis on uploaded data?No, because no data is uploaded. It performs basic SQL aggregations (SUM, COUNT, AVG, percentage change) on internal database tables.
+Are the insights genuinely derived from the uploaded dataset?No. They are derived from SQL queries against seed/manually created database rows.
+Are recommendations rule-based?Yes, 100% rule-based.
+Are responses hardcoded, mocked, generated by an LLM, or calculated using Python/statistics? 
+AI Insights: Calculated using Python SQL comparisons and static string formatting in insights.py.
+AI Assistant Chat: Client-side JavaScript string matching with static template strings in api.js.
+Health Scores / Radar Data: Hardcoded mock objects in mockAI.js.
+Does the AI understand arbitrary datasets?No. It is hardcoded to specific table columns (Sale.total_amount, Inventory.quantity, Expense.amount).
+What happens if the AI API key is missing?The system continues to function normally because no AI API key is required or queried.
+Are API calls actually connected to the user interface?Yes, the frontend calls /api/v1/insights, which runs the deterministic Python rule engine.
+Does the project perform prediction, forecasting, clustering, classification, or any other ML task?No.
+Exact Implementation of "AI" in Codebase
+1. Backend Rule Engine: backend/app/services/insights.py
+python
+# Real code snippet from backend/app/services/insights.py:
+if growth_pct >= 5.0:
+    title = f"Strong Revenue Momentum: +{growth_pct:.1f}% Growth (₹{curr_lakhs:.2f}L)"
+    severity = "info"
+    rec_title = "Scale inventory pipeline for top velocity lines..."
+ins = AIInsight(
+    title=title,
+    category="revenue",
+    confidence_score=Decimal("94.50"), # HARDCODED 94.50
+    ...
+)
+The "confidence score" is simply a hardcoded decimal written directly into the Python code (94.50, 96.00, 91.20, 95.00).
+2. Frontend "AI Assistant" Chat: src/services/api.js
+javascript
+// Real code snippet from src/services/api.js:
+if (q.includes('revenue') && (q.includes('change') || q.includes('month') || q.includes('why'))) {
+  structuredResponse = {
+    answer: `Revenue for the last 90 days stands at ${revFmt} (${revGrow} vs prior period)...`,
+    explanation: 'Revenue trends reflect actual completed sale orders recorded in the database...',
+    sources: 'Live transactional database — Sales Ledger, Accounts Payable, Inventory Registry',
+    confidence: '95% • Computed from live PostgreSQL transactional data', // HARDCODED
+  };
+}
+The "AI Analyst" chat operates by checking string.includes() on the user's message, fetching aggregate numbers from /dashboard/overview, and returning a canned paragraph with a hardcoded "95%" confidence claim.
+J. Actual Application Workflow
+K. Security & Code Quality Findings
+Critical Issues
+Exposed Database Credentials in Template Configuration: 
+Location: backend/.env.example:4
+Type: Plaintext PostgreSQL password committed in version control (postgresql+psycopg://postgres:[REDACTED_PASSWORD]@localhost:5432/...).
+Hardcoded User Passwords in Seeding Script: 
+Location: backend/app/utils/seed.py:122 & verify_ui_e2e.cjs:261
+Type: Plaintext seed password ([REDACTED_PASSWORD]) used to generate hashes for all default users.
+Hardcoded Credentials in Frontend Source: 
+Location: src/pages/auth/Login.jsx:13
+Type: Default state pre-fills the login form with demo@insightiq.ai and [REDACTED_PASSWORD].
+Missing Production .env File: 
+Location: backend/.env
+Type: Configuration failure. The backend Pydantic model declares DATABASE_URL: str and SECRET_KEY: str without default values. Without a .env file, the backend crashes immediately on startup.
+High Severity Issues
+Unauthenticated Simulated Endpoint Behavior: 
+ForgotPassword.jsx gives users a false impression that a recovery email has been sent, while no recovery logic exists.
+Missing Token Expiration Synchronization: 
+If an expired token is stored, the frontend only redirects upon receiving a 401 response from an active API call; static or mock routes remain navigable in a broken state.
+Medium Severity Issues
+Frontend-Backend Discrepancy on "Demo Mode": 
+If the backend is down, some frontend components display mock data while others show network error banners, creating an inconsistent user experience.
+Unused Dependencies: 
+email-validator is listed in requirements.txt but email validation relies mostly on Pydantic's basic string matching.
+Low Severity Issues
+Console Warning Noise: 
+api.js logs warnings to the developer console on non-blocking fallback failures (console.warn('[InsightIQ] Failed to load primary insight')).
+L. Running the Application — Current Status
+Prerequisites
+Node.js (v18+; current machine has v24.11.0)
+Python (v3.10+; current machine has v3.13.2)
+PostgreSQL (v14+ running locally on port 5432)
+1. Backend Setup
+Create a .env file inside backend/ copied from backend/.env.example: 
+env
+APP_NAME="AI Decision Intelligence Platform API"
+APP_ENV=development
+DEBUG=True
+DATABASE_URL=postgresql+psycopg://<your_postgres_user>:<your_postgres_password>@localhost:5432/decision_intelligence
+SECRET_KEY=generate-a-32-byte-secret-key-here
+CORS_ORIGINS=http://localhost:5173
+API_V1_PREFIX=/api/v1
+Create the PostgreSQL database: 
+sql
+CREATE DATABASE decision_intelligence;
+Set up the Python virtual environment and install packages: 
+powershell
+cd backend
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+Run migrations and seed data: 
+powershell
+alembic upgrade head
+python -m app.utils.seed
+Start the backend: 
+powershell
+uvicorn app.main:app --reload --port 8000
+2. Frontend Setup
+From the project root directory, install dependencies: 
+powershell
+npm install
+Start the Vite development server: 
+powershell
+npm run dev
+Open http://localhost:5173 in your browser. Default login credentials from seed: 
+Email: demo@insightiq.ai
+Password: [REDACTED_PASSWORD]
+M. Deployment Readiness
+Can the frontend be deployed as a static website?Partially. The frontend can be built to static HTML/JS (npm run build) and hosted on Vercel, Netlify, or GitHub Pages. However, without the backend, all live CRUD operations (creating sales, customers, products) will fail unless VITE_DEMO_MODE=true is set.
+Is a backend deployment required?Yes. For any real functionality, the FastAPI backend must be hosted (e.g., on Render, Railway, or AWS EC2).
+Is a database deployment required?Yes. A hosted PostgreSQL instance (e.g., Supabase, Neon, or Render PostgreSQL) is mandatory.
+Is Render compatible with the current architecture?Yes. Render natively supports FastAPI with Uvicorn and managed PostgreSQL databases.
+Are deployment configuration files present?No. There are no Dockerfiles, render.yaml, Procfile, or GitHub Actions workflows in the repository.
+N. Comparison with Original Project Definition
+Original Proposed Feature
+Original Expected Scope
+What Actually Exists
+Gap / Divergence Assessment
+1. Authentication
+Login & Registration
+Implemented via JWT, bcrypt, and role guards in FastAPI + React
+Fully Aligned
+2. Company Profile
+Business details setup
+Implemented via /companies and /employees
+Fully Aligned
+3. CSV Data Upload
+Upload CSV datasets
+Completely Missing. No file upload UI or ingestion route
+Major Scope Divergence
+4. Data Processing & Cleaning
+Imputation, normalization
+Missing. Handled only as standard SQL column constraints
+Major Scope Divergence
+5. Business Dashboard
+Real-time KPI tracking
+Implemented with Recharts, dynamic date filters, and live KPIs
+Fully Aligned
+6. Sales Analytics
+Trends, breakdowns
+Implemented with revenue charts, top products, channel share
+Fully Aligned
+7. Sales Prediction
+ML forecasting (e.g. ARIMA/Prophet)
+Replaced with hardcoded mock forecast cards and static SQL diffs
+Replaced with Rules/Mocks
+8. Customer Segmentation
+ML clustering (e.g. K-Means)
+Implemented as a manual dropdown selector (standard/enterprise)
+Replaced with Manual Field
+9. Inventory Analysis & Alerts
+Stockout prediction
+Implemented as SQL threshold check (quantity <= reorder_level)
+Replaced with Heuristics
+10. AI Recommendations
+LLM/ML-generated advisory
+Implemented via deterministic rule engine and JS keyword templates
+Replaced with Rule Engine
+Critical Academic Finding
+The project shifted entirely away from a "data science / CSV analytics pipeline" into a "software engineering / full-stack ERP web application". It has extensive CRUD operations for businesses, but contains no actual data science, machine learning models, or external AI APIs.
+O. Recommended Final Project Definition
+Attempting to present this project as a "Machine Learning Prediction System" or a "CSV Upload Data Science Tool" in a viva or final examination will fail basic scrutiny because:
+An examiner asking to "upload a custom dataset" will immediately discover there is no upload button.
+An examiner asking to "inspect the ML model architecture or hyperparameters" will find zero model files, libraries, or training scripts.
+Proposed Academic Project Title
+"InsightIQ: A Full-Stack Multi-Tenant Business Intelligence and Decision Support System for SMEs"
+Proposed Problem Definition & Scope Statement
+"Small and Medium Enterprises frequently lack integrated visibility into their sales journals, operational expenditures, and warehouse inventory. InsightIQ provides a centralized, multi-tenant decision intelligence platform featuring automated SQL-based financial telemetry, proactive inventory reorder threshold monitoring, and an explainable heuristic advisory engine that transforms transactional records into actionable operational guidance."
+This definition is 100% defendable, accurately reflects the 13-table PostgreSQL architecture, and truthfully presents the intelligence engine as an explainable, deterministic heuristic system rather than claiming false machine learning models.
+P. Recommended Next Steps
+1. What Must Be Fixed
+Provide a working .env file in backend/ with local database credentials so the backend can start without crashing.
+Remove hardcoded default passwords from Login.jsx and seed.py.
+Align "Demo Mode" Fallbacks: When the backend is offline, ensure the frontend displays a graceful "Offline / Demo Mode" banner rather than mixing mock cards with network errors.
+2. What Must Be Tested
+Database Migration Pipeline: Run alembic upgrade head and verify table creation against a fresh local PostgreSQL database.
+Database Seeding: Run python -m app.utils.seed to verify that sample records populate all 13 tables without integrity errors.
+CRUD Workflows: Test adding a customer, adding a product, creating a sale order, and observing the KPI cards update in real-time.
+3. What Can Remain As-Is
+The FastAPI backend endpoints and SQLAlchemy models are well-structured and functional.
+The Recharts visualization components and Tailwind CSS design system are professional and responsive.
+The CSV Export utility works reliably for generating downloadable reports.
+4. What Should NOT Be Attempted Due to Time Constraints
+Do NOT attempt to rewrite the app to build a full CSV ingestion pipeline (parsing arbitrary headers, schema matching, type inference, handling dirty data). Building a reliable dynamic CSV ingestion engine is a multi-week engineering effort and would break the existing 13-table relational schema.
+Do NOT attempt to train and deploy real ML models (e.g., PyTorch/TensorFlow forecasting models) from scratch right before submission.
+Do NOT attempt to integrate paid external LLM APIs (OpenAI/Anthropic) unless specifically required, as the existing rule-based engine already satisfies the "decision support" role if presented honestly.
+5. What Your Team Needs to Understand for the Demo and Viva
+Explain the "AI" honestly as a "Deterministic Decision Support Rule Engine": Emphasize that in financial and SME accounting contexts, deterministic, transparent, and audit-compliant rule-based heuristics are frequently preferred over non-deterministic "black-box" LLMs or hallucinating generative models.
+Highlight the Multi-Tenant Architecture: Be ready to explain how every table partitions data by company_id, and how the JWT payload enforces tenant isolation.
+Master the Relational Schema: Be prepared to explain the relationships between companies, users, products, inventory, sales, and sale_items.

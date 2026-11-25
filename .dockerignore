@@ -1,0 +1,17 @@
+# Node.js build artifacts
+node_modules/
+dist/
+
+# Git
+.git/
+.gitignore
+
+# Environment files (never bake secrets into image)
+.env
+.env.local
+.env.production
+
+# Dev tools
+*.log
+.DS_Store
+Thumbs.db

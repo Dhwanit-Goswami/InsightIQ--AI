@@ -16,6 +16,9 @@ from app.models.business_metric import BusinessMetric
 from app.models.report import Report
 from app.models.ai_insight import AIInsight
 from app.models.ai_recommendation import AIRecommendation
+from app.models.workspace_settings import WorkspaceSettings
+from app.models.password_reset_token import PasswordResetToken
+from app.models.user_session import UserSession
 
 __all__ = [
     "Company",
@@ -31,4 +34,7 @@ __all__ = [
     "Report",
     "AIInsight",
     "AIRecommendation",
+    "WorkspaceSettings",
+    "PasswordResetToken",
+    "UserSession",
 ]

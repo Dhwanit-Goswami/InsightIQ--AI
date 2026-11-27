@@ -406,45 +406,26 @@ export const getSuggestedPrompts = async () => {
 };
 
 // ─── AI Chat via LLM backend ──────────────────────────
-export const sendAIMessage = async (message) => {
+export const sendAIMessage = async (message, history = []) => {
   try {
-    const res = await api.post('/insights/chat', { message });
+    const res = await api.post('/insights/chat', { message, history }, { timeout: 20000 });
     const data = res.data;
-    // If LLM or fallback returned a plain `response` string, format into structured for UI
-    if (data.response && !data.structured) {
-      return {
-        data: {
-          role: 'assistant',
-          structured: {
-            answer: data.response,
-            evidence: '',
-            explanation: '',
-            recommendation: '',
-            sources: data.powered_by_llm ? 'Google Gemini 1.5 Flash — Live KPI Context' : 'InsightIQ Deterministic Engine',
-            confidence: data.powered_by_llm ? '95% • AI-powered analysis' : '90% • Rule-based analysis',
-          },
-          powered_by_llm: data.powered_by_llm,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        }
-      };
+    if (!data || !data.response) {
+      throw new Error('Empty response received from AI service.');
     }
-    return { data };
-  } catch {
-    // Graceful degradation: return an error message formatted for the chat UI
     return {
       data: {
         role: 'assistant',
-        structured: {
-          answer: 'I encountered a temporary issue connecting to the AI service. Please try again.',
-          evidence: '',
-          explanation: '',
-          recommendation: 'Check your internet connection or try refreshing the page.',
-          sources: 'System',
-          confidence: 'N/A',
-        },
+        content: data.response,
+        source: data.source || 'unknown',
+        powered_by_llm: Boolean(data.powered_by_llm),
+        fallback_reason: data.fallback_reason || null,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       }
     };
+  } catch (err) {
+    const detail = err?.response?.data?.detail || err?.message || 'Unable to reach the AI service.';
+    throw new Error(detail);
   }
 };
 

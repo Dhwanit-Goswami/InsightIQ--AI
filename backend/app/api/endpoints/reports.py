@@ -167,7 +167,7 @@ def preview_report(
                 "Description": (e.description or "")[:50],
                 "Date": e.expense_date.strftime("%d %b %Y"),
                 "Amount (₹)": f"₹{float(e.amount):,.2f}",
-                "Vendor": e.vendor_name or "—",
+                "Vendor": e.vendor or "—",
                 "Status": e.status.capitalize(),
             }
             for e in exps
@@ -186,7 +186,7 @@ def preview_report(
         invs = (
             db.query(Inventory)
             .filter(Inventory.company_id == company_id)
-            .order_by(Inventory.quantity_on_hand)
+            .order_by(Inventory.quantity)
             .limit(25)
             .all()
         )
@@ -195,13 +195,13 @@ def preview_report(
                 "Product": inv.product.name if inv.product else "Unknown",
                 "SKU": inv.product.sku if inv.product else "—",
                 "Category": inv.product.category if inv.product else "—",
-                "Qty on Hand": inv.quantity_on_hand,
+                "Qty on Hand": inv.quantity,
                 "Reorder Level": inv.reorder_level,
-                "Status": "⚠ Low Stock" if inv.quantity_on_hand <= inv.reorder_level else "OK",
+                "Status": "⚠ Low Stock" if inv.quantity <= inv.reorder_level else "OK",
             }
             for inv in invs
         ]
-        low_stock = sum(1 for inv in invs if inv.quantity_on_hand <= inv.reorder_level)
+        low_stock = sum(1 for inv in invs if inv.quantity <= inv.reorder_level)
         summary = {
             "Total SKUs Shown": len(rows),
             "Low Stock Alerts": low_stock,
@@ -220,7 +220,7 @@ def preview_report(
             {
                 "Name": c.name,
                 "Email": c.email or "—",
-                "Segment": c.customer_segment or "—",
+                "Segment": c.segment or "—",
                 "City": c.city or "—",
                 "Joined": c.created_at.strftime("%d %b %Y"),
                 "Active": "Yes" if c.is_active else "No",

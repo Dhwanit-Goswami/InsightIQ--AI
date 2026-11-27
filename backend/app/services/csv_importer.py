@@ -1,6 +1,10 @@
+import copy
 import csv
+import hashlib
 import io
 import re
+import threading
+import time
 import uuid
 from datetime import datetime, date, timezone
 from decimal import Decimal, InvalidOperation
@@ -263,6 +267,35 @@ def parse_decimal_safely(val: Any, default: Optional[Decimal] = None) -> Optiona
 class CSVImportService:
     MAX_ROWS = 5000
     MAX_FILE_BYTES = 10 * 1024 * 1024  # 10 MB
+    VALIDATION_CACHE_TTL_SECONDS = 15 * 60  # 15 minutes
+    MAX_VALIDATION_CACHE_ENTRIES = 128
+    _validation_cache: Dict[Tuple[str, str, str, str], Tuple[float, Dict[str, Any]]] = {}
+    _validation_cache_lock = threading.Lock()
+
+    @staticmethod
+    def _now() -> float:
+        return time.monotonic()
+
+    @classmethod
+    def clear_validation_cache(cls, company_id: Optional[uuid.UUID] = None) -> None:
+        """Clear validation cache entries (optionally scoped to a single company)."""
+        with cls._validation_cache_lock:
+            if company_id is None:
+                cls._validation_cache.clear()
+            else:
+                cid = str(company_id)
+                keys = [k for k in cls._validation_cache if k[0] == cid]
+                for k in keys:
+                    del cls._validation_cache[k]
+
+    @classmethod
+    def _purge_expired_cache_locked(cls, now: float) -> None:
+        expired = [
+            k for k, (ts, _) in cls._validation_cache.items()
+            if now - ts >= cls.VALIDATION_CACHE_TTL_SECONDS
+        ]
+        for k in expired:
+            del cls._validation_cache[k]
 
     @classmethod
     def get_template_csv(cls, category: str) -> str:
@@ -340,6 +373,17 @@ class CSVImportService:
         if cat not in CATEGORY_CONFIGS:
             raise ValueError(f"Unknown import category '{category}'. Supported: {list(CATEGORY_CONFIGS.keys())}")
 
+        raw_bytes = file_input if isinstance(file_input, bytes) else (file_input or "").encode("utf-8", errors="replace")
+        content_hash = hashlib.sha256(raw_bytes).hexdigest()
+        cache_key = (str(company_id), cat, content_hash, filename)
+
+        now = cls._now()
+        with cls._validation_cache_lock:
+            cls._purge_expired_cache_locked(now)
+            cached = cls._validation_cache.get(cache_key)
+            if cached is not None:
+                return copy.deepcopy(cached[1])
+
         config = CATEGORY_CONFIGS[cat]
         headers, rows = cls.parse_raw_csv(file_input)
 
@@ -350,13 +394,25 @@ class CSVImportService:
 
         # 2. Category-specific row-by-row validation
         if cat == "customers":
-            return cls._validate_customers(db, company_id, headers, rows, filename)
+            result = cls._validate_customers(db, company_id, headers, rows, filename)
         elif cat == "products":
-            return cls._validate_products(db, company_id, headers, rows, filename)
+            result = cls._validate_products(db, company_id, headers, rows, filename)
         elif cat == "sales":
-            return cls._validate_sales(db, company_id, headers, rows, filename)
+            result = cls._validate_sales(db, company_id, headers, rows, filename)
         elif cat == "expenses":
-            return cls._validate_expenses(db, company_id, headers, rows, filename)
+            result = cls._validate_expenses(db, company_id, headers, rows, filename)
+        else:
+            raise ValueError(f"Unknown import category '{category}'. Supported: {list(CATEGORY_CONFIGS.keys())}")
+
+        store_now = cls._now()
+        with cls._validation_cache_lock:
+            cls._purge_expired_cache_locked(store_now)
+            if len(cls._validation_cache) >= cls.MAX_VALIDATION_CACHE_ENTRIES:
+                oldest_key = min(cls._validation_cache.items(), key=lambda item: item[1][0])[0]
+                del cls._validation_cache[oldest_key]
+            cls._validation_cache[cache_key] = (store_now, copy.deepcopy(result))
+
+        return result
 
     # ─── VALIDATION LOGIC FOR CUSTOMERS ─────────────────────────
     @classmethod
@@ -814,6 +870,7 @@ class CSVImportService:
                 raise ValueError(f"Unsupported commit category '{category}'")
 
             db.commit()
+            cls.clear_validation_cache(company_id)
 
             # Refresh business insights via deterministic rule engine
             try:

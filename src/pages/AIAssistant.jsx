@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { sendAIMessage } from '../services/api';
-import { FiSend, FiCpu, FiTrash2, FiArrowRight } from 'react-icons/fi';
+import { FiSend, FiCpu, FiTrash2, FiArrowRight, FiAlertCircle, FiRefreshCw } from 'react-icons/fi';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import { useAuth } from '../context/AuthContext';
@@ -8,10 +8,10 @@ import { userData } from '../data/mockUser';
 
 const suggestedPrompts = [
   'Why did revenue change this month?',
-  'Which products are underperforming?',
+  'Which products are underperforming or low on stock?',
   'Where are our biggest expenses?',
   'What business risks should I review?',
-  'What should I focus on this week?',
+  'What is our sales forecast?',
 ];
 
 const AIAssistant = () => {
@@ -19,60 +19,48 @@ const AIAssistant = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [lastFailedMessage, setLastFailedMessage] = useState('');
   const scrollRef = useRef(null);
 
   useEffect(() => {
-    // Seed initial professional conversation
-    setMessages([
-      {
-        id: 1,
-        role: 'user',
-        content: 'Why did revenue change this month?',
-        timestamp: '9:30 AM',
-      },
-      {
-        id: 2,
-        role: 'assistant',
-        timestamp: '9:30 AM',
-        structured: {
-          answer: 'Monthly revenue grew 12.4% (to ₹24.8L), driven primarily by retail reorders in Mumbai and Pune hubs.',
-          evidence: '• Mumbai hub sales: +18.2% (₹9.8L contribution)\n• Pune hub sales: +14.1% (₹6.4L contribution)\n• Average Order Value (AOV): Increased from ₹58,200 to ₹64,500\n• Top SKU: Enterprise Analytics Suite contributed ₹8.4L',
-          explanation: 'Retail demand accelerated ahead of the festive inventory cycle. Reorder frequency among established SMEs increased from 1.2 to 1.8 orders per month, with minimal customer acquisition cost increase.',
-          recommendation: 'Pre-allocate 15% additional warehouse inventory in Bhiwandi (Mumbai) and verify logistics lead times with BluePeak Logistics to protect margins.',
-          sources: 'Sales Ledger, GST E-Invoicing records, Regional Distribution manifests',
-          confidence: '94% • Based on 3,842 verified invoices across FY25',
-        },
-      },
-    ]);
-  }, []);
-
-  useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, loading]);
+  }, [messages, loading, error]);
 
-  const handleSend = async (textToSend) => {
-    const text = textToSend || input;
-    if (!text.trim()) return;
+  const handleSend = async (textToSend, isRetry = false) => {
+    const text = (textToSend !== undefined ? textToSend : input).trim();
+    if (!text || loading) return;
 
-    const userMsg = {
-      id: Date.now(),
-      role: 'user',
-      content: text,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    };
+    setError('');
+    setLastFailedMessage('');
 
-    setMessages((prev) => [...prev, userMsg]);
-    setInput('');
+    const historyPayload = messages.slice(-10).map((m) => ({
+      role: m.role,
+      content: m.content || m.structured?.answer || '',
+    }));
+
+    if (!isRetry) {
+      const userMsg = {
+        id: Date.now(),
+        role: 'user',
+        content: text,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      setMessages((prev) => [...prev, userMsg]);
+      setInput('');
+    }
+
     setLoading(true);
 
     try {
-      const response = await sendAIMessage(text);
+      const response = await sendAIMessage(text, historyPayload);
       setMessages((prev) => [
         ...prev,
         { id: Date.now() + 1, ...response.data },
       ]);
     } catch (err) {
-      console.error('Chat error', err);
+      setError(err?.message || 'Failed to get a response from the AI Assistant.');
+      setLastFailedMessage(text);
     } finally {
       setLoading(false);
     }
@@ -80,6 +68,8 @@ const AIAssistant = () => {
 
   const handleClearChat = () => {
     setMessages([]);
+    setError('');
+    setLastFailedMessage('');
   };
 
   return (
@@ -226,6 +216,16 @@ const AIAssistant = () => {
                     <p className="text-light-text-primary dark:text-dark-text-primary leading-relaxed whitespace-pre-wrap">
                       {m.content}
                     </p>
+                    <div className="mt-3 pt-2 border-t border-light-border dark:border-dark-border flex flex-wrap items-center justify-between gap-2 text-[11px] text-light-text-muted dark:text-dark-text-muted">
+                      <span className="flex items-center gap-1.5">
+                        <span className={`w-1.5 h-1.5 rounded-full ${m.powered_by_llm ? 'bg-success' : 'bg-amber-500'}`} />
+                        <span>
+                          {m.powered_by_llm
+                            ? `Live AI (${m.source || 'Gemini'})`
+                            : `Deterministic Fallback (${m.fallback_reason || 'LLM unconfigured'})`}
+                        </span>
+                      </span>
+                    </div>
                   </div>
                 )}
                 <div className="text-[10px] text-light-text-muted dark:text-dark-text-muted text-right font-normal">
@@ -242,6 +242,26 @@ const AIAssistant = () => {
             )}
           </div>
         ))}
+
+        {/* Error Banner with Retry */}
+        {error && (
+          <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-danger/10 border border-danger/30 text-danger text-xs">
+            <div className="flex items-center gap-2">
+              <FiAlertCircle className="w-4 h-4 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+            {lastFailedMessage && (
+              <button
+                type="button"
+                onClick={() => handleSend(lastFailedMessage, true)}
+                className="flex items-center gap-1 px-2.5 py-1 rounded bg-danger text-white font-medium hover:opacity-90 transition-opacity cursor-pointer"
+              >
+                <FiRefreshCw className="w-3 h-3" />
+                <span>Retry</span>
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Loading Indicator */}
         {loading && (
